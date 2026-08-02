@@ -987,6 +987,7 @@ export default function Home() {
       const importedAssets: ProjectAsset[] = [];
       const importedFileNames: string[] = [];
       const failures: Array<{ fileName: string; reason: string }> = [];
+      const warnings: string[] = [];
 
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
@@ -1006,7 +1007,9 @@ export default function Home() {
             ? await import("@/lib/stepImport").then(({ importedShapeFromStep }) => importedShapeFromStep(file.name, buffer))
             : isSvg
               ? importedShapeFromSvg(file.name, new TextDecoder().decode(bytes))
-              : importedShapeFromStl(file.name, buffer);
+              : importedShapeFromStl(file.name, buffer, {
+                  onWarning: (message) => warnings.push(`${file.name} ${message}`),
+                });
           const asset = await projectAssetFromBytes(file.name, sourceFormat, bytes, file.type);
           importedShapes.push(attachProjectAsset(parsedShape, asset.id));
           importedAssets.push(asset);
@@ -1026,6 +1029,9 @@ export default function Home() {
       const remainingFailureCount = Math.max(0, failures.length - 3);
       const failureSummary = failures.length
         ? ` Failed: ${failureDetails}${remainingFailureCount ? `; plus ${remainingFailureCount} more` : ""}`
+        : "";
+      const warningSummary = warnings.length
+        ? ` Warning: ${warnings.slice(0, 2).join("; ")}${warnings.length > 2 ? `; plus ${warnings.length - 2} more` : ""}`
         : "";
 
       if (!importedShapes.length) {
@@ -1048,7 +1054,7 @@ export default function Home() {
         const successSummary = importedShapes.length === 1 && files.length === 1
           ? `Imported ${files[0].name}`
           : `Imported ${importedShapes.length} of ${files.length} files`;
-        setDashboardNotice(`${successSummary}.${failureSummary}`.trim());
+        setDashboardNotice(`${successSummary}.${failureSummary}${warningSummary}`.trim());
         setProjects((current) => [project, ...current]);
         openEditor(project.id, { allowMissingFromStorage: true });
       } catch (error) {

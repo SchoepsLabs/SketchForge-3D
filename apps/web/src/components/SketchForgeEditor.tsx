@@ -8422,6 +8422,7 @@ export function SketchForgeEditor({
     const importedShapes: WorkplaneShape[] = [];
     const importedAssets: ProjectAsset[] = [];
     const failures: Array<{ fileName: string; reason: string }> = [];
+    const warnings: string[] = [];
 
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
@@ -8449,7 +8450,9 @@ export function SketchForgeEditor({
         } else if (isSvg) {
           nextShape = importedShapeFromSvg(file.name, new TextDecoder().decode(bytes));
         } else {
-          nextShape = importedShapeFromStl(file.name, buffer);
+          nextShape = importedShapeFromStl(file.name, buffer, {
+            onWarning: (message) => warnings.push(`${file.name} ${message}`),
+          });
         }
         const asset = await projectAssetFromBytes(file.name, sourceFormat, bytes, file.type);
         importedShapes.push(attachProjectAsset(nextShape, asset.id));
@@ -8475,6 +8478,9 @@ export function SketchForgeEditor({
     const failureSummary = failures.length
       ? ` Failed: ${failureDetails}${remainingFailureCount ? `; plus ${remainingFailureCount} more` : ""}`
       : "";
+    const warningSummary = warnings.length
+      ? ` Warning: ${warnings.slice(0, 2).join("; ")}${warnings.length > 2 ? `; plus ${warnings.length - 2} more` : ""}`
+      : "";
 
     if (!importedShapes.length) {
       setNotice(files.length === 1 && failures[0] ? failures[0].reason : `Could not import any of the ${files.length} selected files.${failureSummary}`);
@@ -8490,7 +8496,7 @@ export function SketchForgeEditor({
     commitShapes(
       [...shapesRef.current, ...importedShapes],
       importedShapes.map((shape) => shape.id),
-      `${successSummary}.${failureSummary}`.trim(),
+      `${successSummary}.${failureSummary}${warningSummary}`.trim(),
     );
     setTopPanel(null);
   }, [commitShapes, onOpenSkfProjectFile]);

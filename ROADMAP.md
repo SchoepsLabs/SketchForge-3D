@@ -20,7 +20,7 @@ stay out of the sketch pipeline.
 
 ## Block 1 — Speed & UX quick wins (week 1–2)
 
-- [ ] **Harden STL import** — `lib/stlImport.ts` + new `tests/unit/stlImport.test.ts`. Wrap
+- [x] **Harden STL import** — `lib/stlImport.ts` + new `tests/unit/stlImport.test.ts`. Wrap
       `STLLoader.parse` in a try/catch that surfaces a readable message, drop NaN/degenerate triangles,
       guard on triangle count before the mesh reaches CSG, and warn when extents look metre-authored.
       *Accept:* tests cover truncated binary, ASCII with NaN, zero-area triangles; no raw loader
