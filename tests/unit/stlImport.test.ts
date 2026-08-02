@@ -173,6 +173,23 @@ describe("importedShapeFromStl — NaN and degenerate triangles", () => {
     expect(warnings.join(" ")).toMatch(/2 zero-area triangles/);
   });
 
+  it("does not move the mesh when the dropped triangles sit inside the bounding box", () => {
+    // skfProject rebuilds importedMesh by re-importing the stored source bytes, while the
+    // shape's x/z stay as saved. Recentring is done on the post-filter bounding box, so a
+    // filter that shrank the box would shift geometry on reopen. Interior degenerate
+    // facets — effectively all of them in practice — leave the box untouched.
+    const interior: Triangle = [
+      [5, 0, 5],
+      [5, 0, 5],
+      [5, 0, 5],
+    ];
+    const clean = importedShapeFromStl("clean.stl", binaryStl(FLAT_PAIR));
+    const withJunk = importedShapeFromStl("junk.stl", binaryStl([...FLAT_PAIR, interior]));
+    expect(withJunk.importedMesh?.positions).toEqual(clean.importedMesh?.positions);
+    expect(withJunk.importedMesh?.baseWidth).toBe(clean.importedMesh?.baseWidth);
+    expect(withJunk.importedMesh?.baseDepth).toBe(clean.importedMesh?.baseDepth);
+  });
+
   it("fails readably when every triangle is unusable", () => {
     const nan: Triangle = [
       [Number.NaN, 0, 0],

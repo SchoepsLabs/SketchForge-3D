@@ -23,7 +23,17 @@ Newest entries on top. Template:
   metre-authored extents; surfaced through a new optional `onWarning` callback wired into both import
   call sites' existing notice strings. Sanitizing inside `importedShapeFromTriangleSoup` means STEP
   import gets the same hardening for free, so error text uses the `sourceFormat` label, not "STL".
-  typecheck + test (182) + perf green; the 60k-triangle perf workload is unaffected.
+  The 2M ceiling is enforced twice: from the binary header before any allocation, and again after
+  sanitizing, which is the layer that actually covers ASCII STL and STEP. typecheck + test (183) +
+  perf green; the 60k-triangle perf workload is unaffected.
+- Checked the reload path (`skfProject.ts` `defaultSourceImporter` re-imports the stored source bytes
+  on project open while the shape keeps its saved x/z), because filtering triangles changes the
+  bounding box the mesh is recentred on. Probed the old behaviour rather than assuming: non-finite
+  coordinates made `computeBoundingBox` return NaN, so the old import *threw* — no saved `.skf` can
+  contain a NaN mesh and NaN filtering has no reload path at all. Degenerate facets inside the box
+  (all of them in practice) leave recentring byte-identical; there is now a test asserting that.
+  Residual, accepted: a project saved before this change whose STL had a stray zero-area facet
+  *outside* the mesh box reopens slightly shifted — its stored extents were inflated by junk anyway.
 - Blocked: nothing.
 - PR candidates: this whole change (upstream has no try/catch around `STLLoader.parse` and no
   NaN/degenerate filtering) — branch it off `main` in Block 4.

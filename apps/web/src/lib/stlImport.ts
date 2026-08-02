@@ -69,6 +69,13 @@ export type SanitizedTriangleSoup = {
  * failures. Normals are kept index-aligned with the positions they belong to, and are
  * discarded wholesale if any survivor carries a non-finite normal so the caller falls
  * back to computed normals.
+ *
+ * Reopening a project re-imports the stored source bytes (skfProject `defaultSourceImporter`)
+ * while the shape keeps its saved transform, so filtering must not move the bounding box.
+ * Non-finite coordinates never could: they made the old box NaN and the import threw. Zero-area
+ * facets sit on the surface in practice and leave the box alone; a stray one outside the box
+ * is the one case where a project saved before this filter existed reopens slightly shifted —
+ * accepted, because its extents were inflated by junk to begin with.
  */
 export function sanitizeTriangleSoup(
   rawPositions: ArrayLike<number>,
