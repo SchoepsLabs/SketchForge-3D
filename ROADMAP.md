@@ -43,10 +43,13 @@ stay out of the sketch pipeline.
       transform the way Tinkercad does.
       *Accept:* unit test for count=5 linear and count=6 circular; array of 20 M3 bosses placed in one
       action. Consumed again by Block 2. [C §3.1]
-- [ ] **Fit-to-view + shortcut audit** — new `docs/SHORTCUTS.md` generated from the real handlers in
-      `SketchForgeEditor.tsx:8560-8710`; add `F` = fit selection to view (present in Tinkercad, absent here).
-      *Accept:* doc lists every bound key and matches the code; `F` frames the selection, falls back to
-      the whole scene when nothing is selected. [C §3.1]
+- [ ] **Shortcut audit + fit-to-selection** — keys are bound in two files, not one: the editor block
+      (`SketchForgeEditor.tsx:8560-8710`, plus the edge-modifier handler at :7343) and the viewport
+      block (`WorkplaneViewport.tsx:4717-4753` — `W`/`Shift+W` workplane, `F`/`Home` reset view,
+      `O` ortho, `+`/`-` zoom). Write `docs/SHORTCUTS.md` covering both. The one real gap: `F` resets
+      the whole view; there is no fit-*selection*-to-view.
+      *Accept:* doc lists every bound key across both files and matches the code; `Shift+F` frames the
+      current selection and leaves plain `F` as-is. [C §3.1]
 - [ ] **First-load performance baseline** — record route JS sizes and OCCT/Manifold WASM fetch timing
       into new `docs/perf/BASELINE.md`, then name the top three payload contributors and whether the
       WASM kernels load eagerly or on demand.

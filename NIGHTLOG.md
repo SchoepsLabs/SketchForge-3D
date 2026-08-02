@@ -13,7 +13,10 @@ Newest entries on top. Template:
   gaps filtered to AV-part work and each grep-verified against apps/web/src before being recorded).
   Blocks 1–4 of ROADMAP.md rewritten into 26 concrete tasks, each with the files it touches, an
   acceptance check, and an evidence tag. Block 0 boxes ticked. typecheck + test green.
-- Blocked: nothing.
+- Blocked: nothing. Second verification pass caught two bad claims in the first draft and both are
+  fixed: keys are bound in WorkplaneViewport.tsx as well as SketchForgeEditor.tsx, and workplane-on-a-face
+  already exists as Shift+W. Lesson for later blocks: grep both giant components, uncapped, before
+  calling anything missing.
 - PR candidates (upstream-useful, tagged for Block 4): STL import hardening (no try/catch around
   STLLoader.parse, no NaN/degenerate filtering), OBJ import (export ships but import is explicitly
   rejected at page.tsx:996 and SketchForgeEditor.tsx:8436), center-on-build-plate (#50),

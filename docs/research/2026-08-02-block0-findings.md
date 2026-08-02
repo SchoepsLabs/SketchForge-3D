@@ -24,6 +24,8 @@ Verified present, so these are ruled out as roadmap items:
 | STEP B-Rep round-trip, SVG import→extrude, revolve, gears, text | `stepExport/stepImport`, `svgImport`, `sketchRevolve`, `gearGeometry` |
 | Shared `.skf` project directory over HTTP | `api/shared-projects/route.ts` |
 | Orthographic toggle (`O`), snap settings, per-shape inspector | README + `WorkspaceSettingsModal.tsx` |
+| Workplane on a selected face (`Shift+W`) | `WorkplaneViewport.tsx:4736`, `placementWorkplane.ts` |
+| Reset view (`F` / `Home`), zoom (`+` / `-`) | `WorkplaneViewport.tsx:4740-4752` |
 
 ## 2. Upstream issues and PRs (Formsmith746/SketchForge-3D)
 
@@ -57,13 +59,31 @@ Sources at the bottom.
 
 ### 3.1 Tinkercad — the "fast" bar
 Ships `R` ruler, `W` workplane, `Shift+W` workplane on a face, `E` show-shape-workplane, `Ctrl+D`
-duplicate-and-repeat, `L` align, `M` mirror. SketchForge matches all except:
+duplicate-and-repeat, `L` align, `M` mirror, `F` fit selection to view.
+
+Keys are bound in **two** files here, which an incomplete first sweep missed: the editor block
+(`SketchForgeEditor.tsx:8560-8710`, plus an edge-modifier handler at :7343) and the viewport block
+(`WorkplaneViewport.tsx:4717-4753`). Taking both into account, SketchForge matches Tinkercad on
+`W` / `Shift+W` / `L` / `M` / `Ctrl+D` / ruler, and adds `O` ortho and `+`/`-` zoom. Remaining gaps:
 
 - **[C] Duplicate-and-repeat pattern.** In Tinkercad, `Ctrl+D` then a transform, then repeated `Ctrl+D`
   replays the transform — an instant linear array. SketchForge's `Ctrl+D` duplicates in place only.
   Verified absent: `grep -ri pattern apps/web/src` hits only `svgImport.ts`; `distribute` → zero hits.
-- **[C] Workplane on a face.** `placementWorkplane.ts` exists but there is no "set workplane from a
-  selected face of a solid" path, which is how you place a connector cutout on a bracket wall.
+- **[C] Fit selection to view.** `F` (and `Home`) call `resetView()`, which reframes the whole scene;
+  there is no fit-to-selection. Minor, but it is the difference between inspecting a 3 mm hole and
+  hunting for it.
+- **Not a gap — corrected on re-check:** workplane-on-a-face *does* exist. `Shift+W` calls
+  `setPlacementWorkplaneAtSelection()` (`WorkplaneViewport.tsx:4736`) on top of
+  `placementWorkplaneFromSurface()` in `placementWorkplane.ts`. An earlier draft of this doc listed it
+  as missing; it is not.
+
+### 3.1a Snap defaults and camera controls — audited, no task
+The original Block 1 bullet named these; both come out adequate, so neither becomes a task.
+Defaults (`workplaneSettings.ts`): 1.0 mm snap, 200 × 200 mm workspace, 5 mm grid blocks, 2-decimal
+accuracy, zoom speed 5, 100-step history. Snap options run `Off / 0.1 / 0.25 / 0.5 / 1.0 / 2.0 / 5.0 mm`
+plus Brick, so sub-millimetre tolerance work is reachable without a code change. Camera has orbit,
+`+`/`-` zoom, `F`/`Home` reset, `O` perspective↔ortho with framing preserved. Nothing here is blocking
+AV-part work.
 
 ### 3.2 Shapr3D / Plasticity — the "functional part" bar
 - **[C] Shell / hollow to a wall thickness.** Missing. `grep -ri hollow` matches only the
