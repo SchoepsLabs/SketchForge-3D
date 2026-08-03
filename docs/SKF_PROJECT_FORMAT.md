@@ -70,4 +70,4 @@ Future schema changes should add a version-to-version migration, run validation 
 - The current workplane system stores a base plane plus numeric offset. It does not expose persistent associative face-workplane references, so `.skf` cannot preserve an association that the editor itself does not model.
 - Geometric sketch constraints and dimensions are not yet part of SketchForge's sketch data model. Existing points, segments, curve handles, profiles, and extrusion depth are preserved exactly.
 - Camera position is intentionally omitted because the current project persistence system does not own it. It can be added as optional editor state in a compatible future version.
-- OBJ is currently an export format, not an import format. An OBJ source-asset record is reserved in the schema for future import support.
+- OBJ imports read `v` and `f` elements only. Faces are fan-triangulated, `l`/`p` elements are dropped, and materials (`mtllib`/`usemtl`) are not applied, so a re-exported OBJ carries geometry but not appearance.

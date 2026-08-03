@@ -89,6 +89,7 @@ import { buildSketchRevolveMesh, DEFAULT_SKETCH_REVOLVE_SETTINGS, normalizeSketc
 import { exportSkfProject, SKF_MEDIA_TYPE } from "@/lib/skfProject";
 import { makeShapeFromAsset, sceneShape, toolbarShapeAssets, type ToolbarShapeAsset } from "@/lib/shapeCatalog";
 import { importedShapeFromStl, importExtensionSupported } from "@/lib/stlImport";
+import { importedShapeFromObj } from "@/lib/objImport";
 import { importedShapeFromSvg, invalidSvgMeshReason } from "@/lib/svgImport";
 import { toSvgProjection, type SvgProjectionLayer } from "@/lib/svgExport";
 import { normalizeSnapGrid, normalizeWorkspaceSettings, workplaneSettingsFingerprint } from "@/lib/workplaneSettings";
@@ -8405,7 +8406,7 @@ export function SketchForgeEditor({
     const projectFiles = files.filter((file) => /\.skf$/i.test(file.name));
     if (projectFiles.length) {
       if (files.length !== 1) {
-        setNotice("Open one .skf project at a time; import STL, STEP, and SVG geometry separately");
+        setNotice("Open one .skf project at a time; import STL, OBJ, STEP, and SVG geometry separately");
         return;
       }
       if (!onOpenSkfProjectFile) {
@@ -8434,7 +8435,8 @@ export function SketchForgeEditor({
       const sourceFormat = sourceFormatForFileName(file.name) ?? (file.type === "image/svg+xml" ? "svg" : null);
       const isStep = sourceFormat === "step";
       const isSvg = sourceFormat === "svg";
-      if (!sourceFormat || sourceFormat === "obj" || (!isStep && !isSvg && !importExtensionSupported(file.name))) {
+      const isObj = sourceFormat === "obj";
+      if (!sourceFormat || (!isStep && !isSvg && !importExtensionSupported(file.name))) {
         failures.push({ fileName: file.name, reason: "Unsupported file type" });
         continue;
       }
@@ -8450,9 +8452,10 @@ export function SketchForgeEditor({
         } else if (isSvg) {
           nextShape = importedShapeFromSvg(file.name, new TextDecoder().decode(bytes));
         } else {
-          nextShape = importedShapeFromStl(file.name, buffer, {
-            onWarning: (message) => warnings.push(`${file.name} ${message}`),
-          });
+          const onWarning = (message: string) => warnings.push(`${file.name} ${message}`);
+          nextShape = isObj
+            ? importedShapeFromObj(file.name, buffer, { onWarning })
+            : importedShapeFromStl(file.name, buffer, { onWarning });
         }
         const asset = await projectAssetFromBytes(file.name, sourceFormat, bytes, file.type);
         importedShapes.push(attachProjectAsset(nextShape, asset.id));
@@ -8999,7 +9002,7 @@ export function SketchForgeEditor({
         className="hidden-file-input"
         type="file"
         multiple
-        accept=".stl,.step,.stp,.svg,image/svg+xml"
+        accept=".stl,.obj,.step,.stp,.svg,image/svg+xml"
         onChange={(event) => {
           if (event.currentTarget.files) {
             selectFiles(event.currentTarget.files);
@@ -9728,7 +9731,7 @@ function TopActionPanel({
             }}
           >
             <ToolbarImportIcon />
-            <strong>Drop STL, STEP, or SVG files</strong>
+            <strong>Drop STL, OBJ, STEP, or SVG files</strong>
             <span>or click to choose from your computer</span>
           </button>
         </div>

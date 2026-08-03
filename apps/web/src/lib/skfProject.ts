@@ -4,6 +4,7 @@ import { normalizePlacementWorkplane, placementWorkplaneIsBase, type PlacementWo
 import { normalizeProjectAsset, sha256Hex } from "@/lib/projectAssets";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
 import { importedShapeFromStl } from "@/lib/stlImport";
+import { importedShapeFromObj } from "@/lib/objImport";
 import { importedShapeFromSvg } from "@/lib/svgImport";
 import { normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import type { GridSize, ProjectAsset, ProjectAssetSourceFormat, SketchOperation, SketchRevolveSettings, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
@@ -999,12 +1000,15 @@ async function validateDocumentAndAssets(raw: unknown, files: ArchiveFiles) {
 
 async function defaultSourceImporter(asset: ProjectAsset) {
   if (asset.sourceFormat === "stl") return importedShapeFromStl(asset.name, exactArrayBuffer(asset.bytes)).importedMesh as NonNullable<WorkplaneShape["importedMesh"]>;
+  if (asset.sourceFormat === "obj") return importedShapeFromObj(asset.name, exactArrayBuffer(asset.bytes)).importedMesh as NonNullable<WorkplaneShape["importedMesh"]>;
   if (asset.sourceFormat === "svg") return importedShapeFromSvg(asset.name, strFromU8(asset.bytes)).importedMesh as NonNullable<WorkplaneShape["importedMesh"]>;
   if (asset.sourceFormat === "step") {
     const { importedShapeFromStep } = await import("@/lib/stepImport");
     return (await importedShapeFromStep(asset.name, exactArrayBuffer(asset.bytes))).importedMesh as NonNullable<WorkplaneShape["importedMesh"]>;
   }
-  throw new Error(`SketchForge cannot reconstruct ${asset.sourceFormat.toUpperCase()} source assets yet`);
+  // Every declared source format is handled above, so this only fires for a format a
+  // future release adds to the type — String() keeps it compiling once TS narrows to never.
+  throw new Error(`SketchForge cannot reconstruct ${String(asset.sourceFormat).toUpperCase()} source assets yet`);
 }
 
 async function restoreShapeFromNode(

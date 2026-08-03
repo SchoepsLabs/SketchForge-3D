@@ -4,7 +4,7 @@ import { createLocalId } from "@/lib/localIds";
 import type { WorkplaneShape } from "@/types/sketchforge";
 
 const stlLoader = new STLLoader();
-const SUPPORTED_IMPORT_EXTENSIONS = new Set(["stl", "svg"]);
+const SUPPORTED_IMPORT_EXTENSIONS = new Set(["stl", "obj", "svg"]);
 
 // Binary STL layout: 80-byte comment header, uint32 little-endian face count, then
 // 50 bytes per facet (12 floats + a 2-byte attribute word).

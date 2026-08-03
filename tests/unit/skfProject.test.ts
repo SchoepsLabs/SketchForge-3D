@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { editorHistoryEntry } from "@/lib/editorHistory";
 import { placementWorkplaneFromSurface } from "@/lib/placementWorkplane";
+import { importedShapeFromObj } from "@/lib/objImport";
 import { projectAssetFromBytes } from "@/lib/projectAssets";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
 import {
@@ -326,6 +327,29 @@ describe("SketchForge .skf project packages", () => {
     expect(restored.assets[0].sourceFormat).toBe(sourceFormat);
     expect(restored.shapes[0].importedMesh?.sourceFormat).toBe(sourceFormat);
     if (sourceFormat === "step") expect(document.exactCad[0].importedStepAssetId).toBeTruthy();
+  });
+
+  it("rebuilds an OBJ-sourced mesh from its stored bytes on reopen", async () => {
+    // Source-backed shapes drop their positions on save and are re-imported on open, so an
+    // OBJ import that has no reconstruction branch imports fine and then fails to reopen.
+    const objText = "o plate\nv 0 0 0\nv 20 0 0\nv 20 0 10\nv 0 0 10\nf 1 2 3 4\n";
+    const bytes = strToU8(objText);
+    const asset = await projectAssetFromBytes("plate.obj", "obj", bytes);
+    const imported = importedShapeFromObj("plate.obj", bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+    const importedMesh = { ...imported.importedMesh!, assetId: asset.id };
+    const saved = shape("mesh", "obj-object", { importedMesh, x: 42, z: -7 });
+
+    const exported = await exportSkfProject(input([saved], { assets: [asset] }));
+    const { document } = packageDocument(exported);
+    const restored = await importSkfProject(exported);
+
+    // No derived mesh in the package means the restored positions came from re-importing
+    // the stored OBJ bytes, not from a cached copy.
+    expect(document.assets.filter((entry) => entry.kind === "derived-mesh")).toHaveLength(0);
+    expect(restored.shapes[0].importedMesh?.sourceFormat).toBe("obj");
+    expect(restored.shapes[0].importedMesh?.triangleCount).toBe(2);
+    expect(restored.shapes[0].importedMesh?.positions).toEqual(importedMesh.positions);
+    expect(restored.shapes[0]).toMatchObject({ x: 42, z: -7 });
   });
 
   it("deduplicates and restores reference images stored in sketches and image plates", async () => {

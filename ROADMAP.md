@@ -25,7 +25,7 @@ stay out of the sketch pipeline.
       guard on triangle count before the mesh reaches CSG, and warn when extents look metre-authored.
       *Accept:* tests cover truncated binary, ASCII with NaN, zero-area triangles; no raw loader
       exception escapes. **PR candidate.** [§4]
-- [ ] **Add OBJ import** — new `lib/objImport.ts` reusing `importedShapeFromTriangleSoup`; extend
+- [x] **Add OBJ import** — new `lib/objImport.ts` reusing `importedShapeFromTriangleSoup`; extend
       `SUPPORTED_IMPORT_EXTENSIONS` and the two `sourceFormat === "obj"` rejections
       (`page.tsx:996`, `SketchForgeEditor.tsx:8436`) plus the `accept` lists.
       *Accept:* a cube.obj fixture imports with the right triangle count and bounds; OBJ export already

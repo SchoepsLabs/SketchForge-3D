@@ -16,6 +16,7 @@ import { attachProjectAsset, dedupeProjectAssets, projectAssetFromBytes, sourceF
 import { hydrateProjectShapeState, type ImportedMeshResource } from "@/lib/projectShapePersistence";
 import { exportSkfProject, importSkfProject, SKF_CREATED_WITH_VERSION } from "@/lib/skfProject";
 import { importExtensionSupported } from "@/lib/stlImport";
+import { importedShapeFromObj } from "@/lib/objImport";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings, workplaneSettingsFingerprint } from "@/lib/workplaneSettings";
 import type { GridSize, ProjectAsset, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
@@ -977,7 +978,7 @@ export default function Home() {
       const projectFiles = files.filter((file) => /\.skf$/i.test(file.name));
       if (projectFiles.length) {
         if (files.length !== 1) {
-          setDashboardNotice("Open one .skf project at a time; import STL, STEP, and SVG geometry separately");
+          setDashboardNotice("Open one .skf project at a time; import STL, OBJ, STEP, and SVG geometry separately");
           return;
         }
         await openSkfProjectFromFile(projectFiles[0]);
@@ -994,7 +995,8 @@ export default function Home() {
         const sourceFormat = sourceFormatForFileName(file.name) ?? (file.type === "image/svg+xml" ? "svg" : null);
         const isSvg = sourceFormat === "svg";
         const isStep = sourceFormat === "step";
-        if (!sourceFormat || sourceFormat === "obj" || (!isSvg && !isStep && !importExtensionSupported(file.name))) {
+        const isObj = sourceFormat === "obj";
+        if (!sourceFormat || (!isSvg && !isStep && !importExtensionSupported(file.name))) {
           failures.push({ fileName: file.name, reason: "Unsupported file type" });
           continue;
         }
@@ -1003,13 +1005,14 @@ export default function Home() {
         try {
           const bytes = new Uint8Array(await file.arrayBuffer());
           const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+          const onWarning = (message: string) => warnings.push(`${file.name} ${message}`);
           const parsedShape = isStep
             ? await import("@/lib/stepImport").then(({ importedShapeFromStep }) => importedShapeFromStep(file.name, buffer))
             : isSvg
               ? importedShapeFromSvg(file.name, new TextDecoder().decode(bytes))
-              : importedShapeFromStl(file.name, buffer, {
-                  onWarning: (message) => warnings.push(`${file.name} ${message}`),
-                });
+              : isObj
+                ? importedShapeFromObj(file.name, buffer, { onWarning })
+                : importedShapeFromStl(file.name, buffer, { onWarning });
           const asset = await projectAssetFromBytes(file.name, sourceFormat, bytes, file.type);
           importedShapes.push(attachProjectAsset(parsedShape, asset.id));
           importedAssets.push(asset);
@@ -1138,7 +1141,7 @@ export default function Home() {
         className="hidden-file-input"
         type="file"
         multiple
-        accept=".skf,.stl,.step,.stp,.svg,image/svg+xml"
+        accept=".skf,.stl,.obj,.step,.stp,.svg,image/svg+xml"
         onChange={(event) => {
           const files = event.currentTarget.files ? Array.from(event.currentTarget.files) : [];
           if (files.length) {
