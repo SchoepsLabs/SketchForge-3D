@@ -37,7 +37,13 @@ Newest entries on top. Template:
   elevation untouched. That last one is the case the pure test `centres an off-centre imported mesh`
   covers, and it confirms centring has to use mesh bounds, not the shape position: `import_mesh` keeps
   the authored offset instead of recentring vertices.
-- typecheck + test (220) green.
+- Follow-up in the same session: "centre never changes height" was a claim the first cut didn't quite
+  honour — the elevation still went through `toFixed(4)` + `cleanNearZero` even when the delta was
+  zero, so a shape sitting at 0.0003 would have been snapped to 0 by a *centring*. Rounding now only
+  touches axes that actually move, with a test for it. Also grepped `WorkplaneViewport.tsx` and
+  `ActionOverlays.tsx` for an existing centre-on-plate action before calling this new (Block 0 lesson):
+  nothing there, so the upstream PR won't be duplicating a viewport-side control.
+- typecheck + test (221) green.
 - Blocked: nothing.
 - PR candidates: this whole change (upstream issue #50 asks for it) — branch it off `main` in Block 4.
   It is self-contained: one new lib file, one new test, one icon, ~35 lines in the editor, no

@@ -109,7 +109,9 @@ export function placeSelectionOnPlate(items: PlaceOnPlateItem[], options: PlaceO
     id: item.id,
     x: roundCoordinate(item.x + deltaX, epsilon),
     z: roundCoordinate(item.z + deltaZ, epsilon),
-    elevation: roundCoordinate(item.elevation + deltaY, epsilon),
+    // Centring is X/Z only unless asked to drop, so an untouched height stays byte-identical rather
+    // than picking up the rounding this function applies to the axes it does move.
+    elevation: deltaY === 0 ? item.elevation : roundCoordinate(item.elevation + deltaY, epsilon),
   }));
 
   return { moves, moved: moves.length, delta: { x: deltaX, y: deltaY, z: deltaZ } };

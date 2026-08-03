@@ -88,6 +88,14 @@ describe("placeSelectionOnPlate", () => {
     expect(placeSelectionOnPlate(items, { dropToPlate: true }).moves[0].elevation).toBe(0);
   });
 
+  it("does not round a height it was not asked to change", () => {
+    // Sub-epsilon heights survive a centring untouched: rounding applies to the axes that move.
+    const items = [box("a", { x: 30, z: 30, elevation: 0.000_3 })];
+
+    expect(placeSelectionOnPlate(items).moves[0].elevation).toBe(0.000_3);
+    expect(placeSelectionOnPlate(items, { dropToPlate: true }).moves[0].elevation).toBe(0);
+  });
+
   it("drops the selection as a unit so only the lowest shape lands on the plate", () => {
     const items = [
       box("low", { x: 0, z: 0, elevation: 15 }),
