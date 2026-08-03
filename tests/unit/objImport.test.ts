@@ -105,6 +105,16 @@ describe("importedShapeFromObj — valid input", () => {
     expect(shape.importedMesh?.baseWidth).toBeCloseTo(20, 6);
   });
 
+  it("joins faces continued across lines with a trailing backslash", () => {
+    // OBJLoader folds CRLF and joins `\`-continued lines before it splits, so the reader
+    // has to fold them too or it validates a different set of lines than the parser reads.
+    const hexagon = "v 0 0 0\nv 10 0 0\nv 12 0 6\nv 5 0 12\nv -2 0 6\nv -4 0 2\n";
+    const continued = importObj("hexagon.obj", `${hexagon}f 1 2 3 \\\n  4 5 6\n`);
+    const inline = importObj("hexagon.obj", `${hexagon}f 1 2 3 4 5 6\n`);
+    expect(continued.importedMesh?.triangleCount).toBe(4);
+    expect(continued.importedMesh?.positions).toEqual(inline.importedMesh?.positions);
+  });
+
   it("keeps the mesh when the file also carries line and point elements", () => {
     // OBJLoader tracks one geometry type per object and the last element seen wins, so an
     // `l` next to faces returns the whole object as LineSegments and the mesh vanishes.
@@ -139,6 +149,20 @@ describe("importedShapeFromObj — hardening", () => {
     expect(() => importObj("truncated.obj", "v 0 0 0\nf -2 -1 1\n")).toThrowError(
       /face on line 2 references vertex -2 but only 1 vertex is defined/,
     );
+  });
+
+  it("range-checks indices that sit past a line continuation", () => {
+    // Reading the raw text would stop validating at the backslash and let the tail through.
+    expect(() => importObj("truncated.obj", "v 0 0 0\nv 20 0 0\nv 0 0 10\nf 1 2 \\\n 9\n")).toThrowError(
+      /references vertex 9 but only 3 vertices are defined/,
+    );
+  });
+
+  it("keeps the mesh when a line element is continued across rows", () => {
+    const withContinuedLine = `${TRIANGLE_OBJ}v 500 500 500\nl 1 2 \\\n 4\n`;
+    const shape = importObj("annotated.obj", withContinuedLine);
+    expect(shape.importedMesh?.triangleCount).toBe(1);
+    expect(shape.importedMesh?.positions).toEqual(importObj("clean.obj", TRIANGLE_OBJ).importedMesh?.positions);
   });
 
   it("reports a file that carries only line or point geometry", () => {
@@ -189,8 +213,13 @@ describe("readObjSource", () => {
     expect(source.faceText).toBe("v 0 0 0\nv 1 0 0\nv 0 0 1\n\nf 1 2 3\n\n");
   });
 
-  it("returns the text untouched when there is nothing to strip", () => {
+  it("returns the text untouched when there is nothing to strip or fold", () => {
     expect(readObjSource(CUBE_OBJ).faceText).toBe(CUBE_OBJ);
+  });
+
+  it("folds CRLF and line continuations into the text OBJLoader will read", () => {
+    expect(readObjSource("v 0 0 0\r\nv 1 0 0 \\\n 0\r\nv 0 0 1\r\nf 1 2 3\r\n").faceText)
+      .toBe("v 0 0 0\nv 1 0 0  0\nv 0 0 1\nf 1 2 3\n");
   });
 
   it("ignores comments and unknown keywords", () => {

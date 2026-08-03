@@ -16,8 +16,19 @@ type ObjContents = {
   nonFaceElements: number;
 };
 
-function stripBom(text: string) {
-  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+/**
+ * Mirrors what OBJLoader.parse does to the text before it splits on newlines: CRLF is
+ * folded and a trailing `\` joins its line with the next one. Validating the raw text
+ * instead would mean checking a different set of lines than the parser reads — a face
+ * continued across two lines would leave everything after the `\` unvalidated, which is
+ * exactly the truncation case the range check exists for. The `indexOf` guards keep a
+ * large file from being copied when there is nothing to fold.
+ */
+function normalizeObjText(rawText: string) {
+  let text = rawText.charCodeAt(0) === 0xfeff ? rawText.slice(1) : rawText;
+  if (text.indexOf("\r\n") !== -1) text = text.replace(/\r\n/g, "\n");
+  if (text.indexOf("\\\n") !== -1) text = text.replace(/\\\n/g, "");
+  return text;
 }
 
 /**
@@ -36,10 +47,11 @@ function positionIndexOf(reference: string) {
 export type ObjSource = {
   contents: ObjContents;
   /**
-   * The file with its `l` and `p` element lines removed. OBJLoader tracks one geometry
-   * type per object and the last element seen wins, so a single `l` anywhere turns that
-   * object — faces and all — into LineSegments and the mesh disappears. Vertex lines are
-   * untouched, so every face index still resolves to the same vertex.
+   * The normalized text with its `l` and `p` element lines removed, and the string that
+   * must be handed to OBJLoader. It tracks one geometry type per object and the last
+   * element seen wins, so a single `l` anywhere turns that object — faces and all — into
+   * LineSegments and the mesh disappears. Vertex lines are untouched, so every face index
+   * still resolves to the same vertex.
    */
   faceText: string;
 };
@@ -52,8 +64,9 @@ export type ObjSource = {
  * mis-named binary from warning once per line, and drops the non-face elements that
  * would otherwise cost us the whole mesh.
  */
-export function readObjSource(text: string): ObjSource {
+export function readObjSource(rawText: string): ObjSource {
   const contents: ObjContents = { vertices: 0, faces: 0, nonFaceElements: 0 };
+  const text = normalizeObjText(rawText);
   if (!text.trim()) {
     throw new Error("OBJ file is empty");
   }
@@ -148,7 +161,7 @@ export function importedShapeFromObj(
   buffer: ArrayBuffer,
   options: ImportOptions = {},
 ): WorkplaneShape {
-  const { contents, faceText } = readObjSource(stripBom(new TextDecoder().decode(buffer)));
+  const { contents, faceText } = readObjSource(new TextDecoder().decode(buffer));
 
   let group: THREE.Group;
   try {

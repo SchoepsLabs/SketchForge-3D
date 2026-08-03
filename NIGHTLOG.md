@@ -33,7 +33,17 @@ Newest entries on top. Template:
   (cube fixture: 6 quads → 12 triangles, 20 × 20 × 20 mm), and a fixture shaped exactly like the
   editor's own `toObj` output — `o` blocks with a running vertex offset — round-trips, closing the
   export/import loop.
-- typecheck + test (202) green. The dead `defaultSourceImporter` fallback needed a `String()` because
+- Follow-up in the same session, third OBJLoader behaviour found by probing: `parse` folds `\r\n` and
+  joins `\`-continued lines *before* it splits, so validating the raw text meant checking a different
+  set of lines than the parser reads — a face continued across two rows left everything after the
+  backslash unrange-checked, which is precisely the truncation case the check exists for.
+  `readObjSource` now normalizes first (same `indexOf` guards OBJLoader uses, so a large file is not
+  copied for nothing) and both the validation and `objLoader.parse` run on that one string.
+  Regression tests: a continued hexagon face equals the inline one, an out-of-range index past a
+  continuation is still named, and a continued `l` element still leaves the mesh intact.
+- Also cleared the last place a format list could hide: MCP `import_mesh` takes raw triangle positions,
+  not files, so it needs nothing.
+- typecheck + test (206) green. The dead `defaultSourceImporter` fallback needed a `String()` because
   TS now narrows the format union to `never` there — a nice signal that all four formats are handled.
   Not smoke-tested through the browser file picker: verified the app compiles and serves on :3001, and
   the UI wiring is four small edits around the importer the tests exercise directly.
