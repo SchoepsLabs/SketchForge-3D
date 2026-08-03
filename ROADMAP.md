@@ -30,7 +30,7 @@ stay out of the sketch pipeline.
       (`page.tsx:996`, `SketchForgeEditor.tsx:8436`) plus the `accept` lists.
       *Accept:* a cube.obj fixture imports with the right triangle count and bounds; OBJ export already
       ships, so this closes the round-trip. **PR candidate.** [§4]
-- [ ] **Center selection on the build plane** — pure fn in new `lib/placeOnPlate.ts` (center X/Z,
+- [x] **Center selection on the build plane** — pure fn in new `lib/placeOnPlate.ts` (center X/Z,
       optional drop to Y=0), button next to the existing align control.
       *Accept:* unit test on the pure fn for single + multi-selection; button centers an imported STL in
       one click. **PR candidate.** [U50]

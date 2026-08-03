@@ -7,6 +7,43 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-02 — Block 1, task 3 (center selection on the build plate)
+- Shipped: new `lib/placeOnPlate.ts` (`placeSelectionOnPlate`, pure) + `tests/unit/placeOnPlate.test.ts`
+  (14 cases), a `ToolbarCenterOnWorkplaneIcon` inline SVG, and a "Center on plate" button in the
+  toolbar's Arrange section next to "Drop to workplane" (one section over from Align, where the
+  roadmap wanted it). The fn takes pre-computed world bounds per shape rather than shapes, so the test
+  never touches THREE or the mesh pipeline; the editor passes `meshAabb(shape)`, the same bounds the
+  align control uses. Options cover `dropToPlate`/`plateY`/`plateCenterX`/`plateCenterZ`, but the
+  button only centres X/Z — dropping already has its own button next to it, and keeping them
+  orthogonal means "centre" never changes a part's height. The drop option is there for the Block 2/3
+  generators that will want centre-and-seat in one call.
+- Two decisions worth recording:
+  (a) **Locked shapes.** Centring is a rigid translation onto a fixed target (the plate origin), so
+  unlike Align there is no rule that both centres the selection and leaves a locked member in place —
+  the two are mutually exclusive. Align gets away with it because `effectiveAlignmentAnchorId` promotes
+  a locked shape to *the anchor*, making its own coordinate the target. So: locked shapes are excluded
+  from the combined bounds and never moved, and the movable remainder is centred — the same
+  skip-locked-and-move-the-rest semantics as `dropSelectedToWorkplane`, the button it sits beside. An
+  all-locked selection reports `moved: 0` and the UI says "Selection is locked" rather than computing a
+  bbox over an empty set (`Math.min()` of nothing is `Infinity`, which would fail silently downstream).
+  (b) **One group delta, one epsilon check.** Align's per-shape `<= ALIGN_EPSILON` guard would be a bug
+  here: every shape shares one delta, so a per-shape check could strand a shape whose own delta rounded
+  small while its neighbours moved, shearing the selection apart. The already-centred check is made
+  once on the group; there is a test named for exactly that case.
+- Verified in the running editor (localhost:3001, MCP bridge) as well as in unit tests: two boxes
+  spanning X 40..95 centred to x=-7.5/+22.5 with the 30 mm spacing intact, a second click reported
+  "Already centered on the plate", and an imported mesh moved off-centre landed with its *mesh*
+  footprint on the origin (x=-110, z=-210 for a mesh authored at 100..120 / 200..220) with its
+  elevation untouched. That last one is the case the pure test `centres an off-centre imported mesh`
+  covers, and it confirms centring has to use mesh bounds, not the shape position: `import_mesh` keeps
+  the authored offset instead of recentring vertices.
+- typecheck + test (220) green.
+- Blocked: nothing.
+- PR candidates: this whole change (upstream issue #50 asks for it) — branch it off `main` in Block 4.
+  It is self-contained: one new lib file, one new test, one icon, ~35 lines in the editor, no
+  dependency on the STL/OBJ work.
+- Next: Block 1 item 4 — distribute evenly, pure fn in new `lib/distributeShapes.ts` [U51].
+
 ## 2026-08-02 — Block 1, task 2 (OBJ import)
 - Shipped: new `lib/objImport.ts` + `tests/unit/objImport.test.ts` (18 cases), wired into both import
   call sites (`page.tsx`, `SketchForgeEditor.tsx`), both `accept` lists, the drop-zone label, the two

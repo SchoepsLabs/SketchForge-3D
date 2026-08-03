@@ -27,6 +27,7 @@ import {
   ToolbarCaretDownIcon,
   ToolbarCopyIcon,
   ToolbarDuplicateIcon,
+  ToolbarCenterOnWorkplaneIcon,
   ToolbarDropToWorkplaneIcon,
   ToolbarExportIcon,
   ToolbarGroupIcon,
@@ -82,6 +83,7 @@ import { cloneWorkplaneShapeSnapshot, compactEdgeTreatmentHistory, edgeTreatment
 import { appendEditorHistorySnapshot, boundedEditorHistoryState, editorHistoryEntry, editorHistoryForExport, hydrateEditorHistoryState, projectShapesFingerprint, type EditorHistoryEntry, type EditorHistoryExportLimit, type EditorHistoryState } from "@/lib/editorHistory";
 import { snapShapeFootprintToVisibleGrid, visibleGridStep } from "@/lib/gridSnap";
 import { createLocalId } from "@/lib/localIds";
+import { placeSelectionOnPlate } from "@/lib/placeOnPlate";
 import { projectExportFileName } from "@/lib/exportNames";
 import { attachProjectAsset, dedupeProjectAssets, projectAssetFromBytes, sourceFormatForFileName } from "@/lib/projectAssets";
 import { findSketchOutlineIntersection } from "@/lib/sketchProfileValidation";
@@ -7513,6 +7515,36 @@ export function SketchForgeEditor({
     );
   }, [commitShapes, hasSelection, placementWorkplane, selectedIds, shapes]);
 
+  const centerSelectedOnPlate = useCallback(() => {
+    if (!hasSelection) {
+      setNotice("Select a shape first");
+      return;
+    }
+    const { moves, moved } = placeSelectionOnPlate(
+      selectedShapes.map((shape) => ({
+        id: shape.id,
+        bounds: meshAabb(shape),
+        x: shape.x,
+        z: shape.z,
+        elevation: shape.elevation ?? 0,
+        locked: shape.locked,
+      })),
+    );
+    if (moved === 0) {
+      setNotice(selectedShapes.every((shape) => shape.locked) ? "Selection is locked" : "Already centered on the plate");
+      return;
+    }
+    const movesById = new Map(moves.map((move) => [move.id, move]));
+    commitShapes(
+      shapes.map((shape) => {
+        const move = movesById.get(shape.id);
+        return move ? { ...shape, x: move.x, z: move.z, elevation: move.elevation } : shape;
+      }),
+      selectedIds,
+      `Centered ${moved} shape${moved === 1 ? "" : "s"} on the plate`,
+    );
+  }, [commitShapes, hasSelection, selectedIds, selectedShapes, shapes]);
+
   const activateWorkplaneTool = useCallback(() => {
     setWorkplaneMode((active) => {
       const next = !active;
@@ -8801,6 +8833,7 @@ export function SketchForgeEditor({
         onDelete={deleteSelected}
         onDuplicate={duplicateSelected}
         onDropToWorkplane={dropSelectedToWorkplane}
+        onCenterOnPlate={centerSelectedOnPlate}
         onGroup={groupSelected}
         onIntersect={intersectSelected}
         onFillet={() => edgeModifier?.kind === "fillet" ? cancelEdgeModifier() : startEdgeModifier("fillet")}
@@ -9089,6 +9122,7 @@ function SecondaryToolbar({
   onDelete,
   onDuplicate,
   onDropToWorkplane,
+  onCenterOnPlate,
   onGroup,
   onIntersect,
   onFillet,
@@ -9140,6 +9174,7 @@ function SecondaryToolbar({
   onDelete: () => void;
   onDuplicate: () => void;
   onDropToWorkplane: () => void;
+  onCenterOnPlate: () => void;
   onGroup: () => void;
   onIntersect: () => void;
   onFillet: () => void;
@@ -9273,6 +9308,7 @@ function SecondaryToolbar({
   ];
   const arrangeTools = [
     { label: "Drop to workplane", icon: ToolbarDropToWorkplaneIcon, action: onDropToWorkplane, enabled: hasSelection },
+    { label: "Center on plate", icon: ToolbarCenterOnWorkplaneIcon, action: onCenterOnPlate, enabled: hasSelection },
   ];
   const renderToolButton = (tool: (typeof leftTools)[number] | (typeof visibilityTools)[number] | (typeof combineTools)[number] | (typeof modifyTools)[number] | (typeof arrangeTools)[number]) => {
     const { icon: Icon, action, enabled, label } = tool;

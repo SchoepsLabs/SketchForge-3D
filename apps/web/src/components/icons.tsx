@@ -182,3 +182,14 @@ export function ToolbarWorkplaneIcon() {
 export function ToolbarDropToWorkplaneIcon() {
   return <ToolbarCommandImage file="toolbar-drop-workplane.png" className="toolbar-user-art-icon" />;
 }
+
+export function ToolbarCenterOnWorkplaneIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <path d="M24 27 5 34l19 7 19-7z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M5 34h38" fill="none" stroke="currentColor" strokeWidth="1.8" strokeDasharray="3 3" opacity="0.7" />
+      <rect x="16" y="12" width="16" height="15" rx="2" fill="currentColor" opacity="0.82" />
+      <path d="M5 19h7M9 16l3 3-3 3M43 19h-7M39 16l-3 3 3 3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
