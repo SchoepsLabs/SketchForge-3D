@@ -7,6 +7,42 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 5, task 7 (toolbar shortcut hints) + task 6 blocked
+- Shipped task 7: new `lib/shortcutHints.ts` is the one table; `renderToolButton` builds every tooltip
+  from it, and a test asserts each key in the table also appears in `docs/SHORTCUTS.md` — so the
+  tooltip and the doc cannot drift, which is exactly what the acceptance asked for ("derived from one
+  shared constants module, not hand-typed twice"). 7 tests.
+- **The roadmap's own example doesn't exist.** It suggested `"Fillet (Shift+F)"`, but the audit for
+  SHORTCUTS.md found Chamfer and Fillet have **no** binding: `F` resets the view (viewport handler)
+  and `Shift+F` is reserved for Block 1's fit-to-selection. Buttons with no key keep their bare label
+  rather than advertising one that does nothing.
+- Details worth keeping: Hole/Solid and Lock advertise the key for the direction they would *apply*
+  (a solid selection reads "Make hole (H)"); macOS renders ⌘/⇧/⌫ glyphs, resolved **after mount**
+  because the server render has no `navigator` and a differing tooltip would be a hydration mismatch;
+  and the tooltip is now the `aria-label` too, so the key reaches screen readers instead of only
+  hover.
+- **Task 6 (icon unification) — not attempted, and deliberately so.** The inventory: 19 toolbar icons
+  are `<img>` PNGs under `public/assets/sketchforge/` (`toolbar-copy.png`, `toolbar-group.png`,
+  `toolbar-chamfer.png`, …), 3 are sprite crops (`ToolbarShapeAddIcon`, `ToolbarHideSelectedIcon`,
+  `ToolbarAlignIcon`), the rest are already inline SVG. That is 22 pieces of Marty's chosen toolbar
+  art to redraw by hand, and the task's own acceptance is a **visual** one — "no visual regression on
+  the sections screenshot in `docs/media/`" (the v0.8.0 editor screenshot). With no browser this
+  session (two Chromes connected; the extension needs a manual pick before any automation), 22 blind
+  redraws of the app's visual identity could only be checked by the next person to open the editor.
+  Shipping half of them would be worse than either end state — a toolbar mixing my line-art with the
+  existing art reads as broken rather than unfinished. Logged and skipped per the "log it and move on"
+  rule; the two icons this session *did* add (`ToolbarHoleIcon`, `ToolbarLockIcon`) are already inline
+  `currentColor` SVG, so they need no rework when the pass happens.
+  Plan for next session, in order: (1) open the editor and screenshot the toolbar at both themes as a
+  before; (2) redraw the 3 sprite crops first — they are the smallest and the sprite sheet can then be
+  dropped entirely; (3) the 19 PNGs in groups of ~5, screenshotting after each group; (4) delete the
+  unused PNGs and the `toolbar-command-icon` CSS only once nothing references them.
+- typecheck + test (359) green.
+- Blocked: task 6 only, on visual verification (see above).
+- Next: Block 5 is otherwise complete. Remaining across the roadmap: Block 1's distribute-evenly,
+  fit-to-selection (`Shift+F`) and the perf baselines, then Block 2's MCP surface — for which
+  `lib/patternShapes.ts` is now waiting.
+
 ## 2026-08-05 — Block 5, task 5 (Hole/Solid + Lock in the toolbar)
 - Shipped: two entries in the toolbar's Modify group next to Chamfer/Fillet, using the same
   `active` → `.toolbar-icon.active` pressed styling, plus new `ToolbarHoleIcon`/`ToolbarLockIcon`
