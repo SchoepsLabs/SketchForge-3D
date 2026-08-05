@@ -237,6 +237,18 @@ const tools = [
     inputSchema: editorTargetSchema,
   },
   {
+    name: "sketchforge_save_project",
+    description: "Save the current SketchForge project into the shared parts library as a .skf file. Creates a new file by default; pass overwrite:true only when the user asked to replace an existing part.",
+    inputSchema: {
+      ...editorTargetSchema,
+      properties: {
+        ...editorTargetSchema.properties,
+        name: { type: "string", description: "File name to save as, without the .skf extension. Defaults to the current project name." },
+        overwrite: { type: "boolean", description: "Replace an existing shared part with the same name. Ask the user before setting this." },
+      },
+    },
+  },
+  {
     name: "sketchforge_capture_image",
     description: "Capture a PNG image of the editor viewport from current/home/top/bottom/front/back/right/left view.",
     inputSchema: {
@@ -331,6 +343,8 @@ async function callTool(name, args) {
       return bridgeCommand("inspect_errors", args);
     case "sketchforge_capture_image":
       return bridgeCommand("capture_image", args, 30000);
+    case "sketchforge_save_project":
+      return bridgeCommand("save_project", args, 60000);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

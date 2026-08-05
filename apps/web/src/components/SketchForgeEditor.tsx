@@ -115,6 +115,7 @@ import { placeSketchExtrusion } from "@/lib/sketchPlacement";
 import { readMcpEditorIdentity } from "@/lib/mcpEditorIdentity";
 import { clearActiveShapeDragAsset, serializeShapeDragAsset, setActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
 import { buildWorkplaneContextMenuItems } from "@/lib/workplaneContextMenu";
+import { overwritePrompt, SharedProjectSaveError } from "@/lib/sharedProjectSave";
 import { isMacPlatform, toolbarTooltip, type ShortcutHintId } from "@/lib/shortcutHints";
 import {
   applyTransformDelta,
@@ -5288,7 +5289,7 @@ export function SketchForgeEditor({
   initialPlacementWorkplane?: PlacementWorkplane;
   onHome?: () => void;
   onOpenSkfProjectFile?: (file: File) => Promise<{ ok: boolean; message: string } | void> | { ok: boolean; message: string } | void;
-  onSaveSharedProject?: (request: { exportName: string; bytes: Uint8Array }) => Promise<string>;
+  onSaveSharedProject?: (request: { exportName: string; bytes: Uint8Array; overwriteRevision?: string | null }) => Promise<string>;
   onProjectShapesChange?: (snapshot: {
     projectId: string;
     shapes: WorkplaneShape[];
@@ -5355,6 +5356,7 @@ export function SketchForgeEditor({
   const [skfExporting, setSkfExporting] = useState(false);
   const [alignMode, setAlignMode] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [sharedOverwrite, setSharedOverwrite] = useState<{ exportName: string; bytes: Uint8Array; fileName: string; revision: string } | null>(null);
   const [alignAnchorId, setAlignAnchorId] = useState<string | null>(null);
   const [alignPreview, setAlignPreview] = useState<{ axis: AlignAxis; target: AlignTarget } | null>(null);
   const [mirrorMode, setMirrorMode] = useState(false);
@@ -5379,6 +5381,7 @@ export function SketchForgeEditor({
   // Smart duplicate: the copies the last Ctrl+D made, where they landed, and the
   // step being replayed. Lives in a ref because it is a gesture, not UI state.
   const duplicateReplayRef = useRef<DuplicateReplay | null>(null);
+  const sharedOverwriteRef = useRef<{ exportName: string; bytes: Uint8Array; fileName: string; revision: string } | null>(null);
   const workspaceSettingsRef = useRef(workspaceSettings);
   const snapGridRef = useRef(snapGrid);
   const placementElevationRef = useRef(placementElevation);
@@ -6098,6 +6101,21 @@ export function SketchForgeEditor({
   // assistant turn, and put a restored snapshot back through commitShapes so it
   // lands in the normal undo chain rather than a parallel history.
   const readShapesForAssistant = useCallback(() => shapesRef.current, []);
+
+  const confirmSharedOverwrite = useCallback(async () => {
+    const pending = sharedOverwriteRef.current;
+    if (!pending || !onSaveSharedProject) return;
+    setSharedOverwrite(null);
+    setSkfExporting(true);
+    setNotice(`Overwriting ${pending.fileName.replace(/\.skf$/i, "")}…`);
+    try {
+      setNotice(await onSaveSharedProject({ exportName: pending.exportName, bytes: pending.bytes, overwriteRevision: pending.revision }));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not overwrite the shared project");
+    } finally {
+      setSkfExporting(false);
+    }
+  }, [onSaveSharedProject]);
 
   const restoreSceneDraft = useCallback(
     (draftShapes: WorkplaneShape[], draftSelection: string[]) => {
@@ -7808,6 +7826,29 @@ export function SketchForgeEditor({
     };
   }, [initialSnap]);
 
+  /** Packages the live scene as .skf bytes. Shared by the export panel and the dock's save_project tool. */
+  const packageSkfBytes = useCallback(
+    async (exportName: string, historyLimit: SkfHistoryLimit = "unlimited") => {
+      const exportedHistory = editorHistoryForExport(historyRef.current, historyIndexRef.current, historyLimit);
+      return exportSkfProject({
+        projectId: projectInfoRef.current.projectId,
+        projectName: exportName.trim() || projectInfoRef.current.projectName,
+        createdAt: projectCreatedAt,
+        modifiedAt: projectModifiedAt,
+        shapes: shapesRef.current,
+        history: exportedHistory.entries,
+        historyIndex: exportedHistory.index,
+        assets: projectAssetsRef.current,
+        workspace: workspaceSettingsRef.current,
+        snapGrid,
+        placementElevation,
+        placementWorkplane,
+        sketchPlacementWorkplane: placementWorkplane,
+      });
+    },
+    [placementElevation, placementWorkplane, projectCreatedAt, projectModifiedAt, snapGrid],
+  );
+
   const executeMcpCommand = useCallback(async (command: SketchForgeMcpCommand): Promise<unknown> => {
     const params = command.params ?? {};
     const currentShapes = () => shapesRef.current;
@@ -8112,6 +8153,30 @@ export function SketchForgeEditor({
         };
       }
 
+      if (command.action === "save_project") {
+        if (!onSaveSharedProject) throw new Error("Shared project storage is not available in this deployment");
+        const requestedName = mcpString(params.name, "").trim() || projectInfoRef.current.projectName;
+        const overwrite = params.overwrite === true;
+        const bytes = await packageSkfBytes(requestedName);
+        try {
+          const message = await onSaveSharedProject({ exportName: requestedName, bytes });
+          setNotice(message);
+          return { saved: true, name: requestedName, overwritten: false, message };
+        } catch (error) {
+          // Overwriting is the user's call: without an explicit overwrite:true
+          // the assistant is told to ask rather than silently replacing a part.
+          if (error instanceof SharedProjectSaveError && error.failure.overwritable && error.failure.currentRevision) {
+            if (!overwrite) {
+              throw new Error(`A shared part named "${requestedName}" already exists. Ask the user, then call again with overwrite: true, or pick another name.`);
+            }
+            const message = await onSaveSharedProject({ exportName: requestedName, bytes, overwriteRevision: error.failure.currentRevision });
+            setNotice(message);
+            return { saved: true, name: requestedName, overwritten: true, message };
+          }
+          throw error;
+        }
+      }
+
       if (command.action === "capture_image") {
         const face = mcpString(params.face, "current") as SketchForgeMcpViewFace;
         const image = await (window.sketchforgeCaptureView?.(face) ?? window.sketchforgeCaptureCanvas?.() ?? "");
@@ -8134,9 +8199,15 @@ export function SketchForgeEditor({
     initialSnap,
     invalidateCadModifierSession,
     mcpSceneSnapshot,
+    onSaveSharedProject,
+    packageSkfBytes,
     placementElevation,
     prepareCadModifierForMcp,
   ]);
+
+  useEffect(() => {
+    sharedOverwriteRef.current = sharedOverwrite;
+  }, [sharedOverwrite]);
 
   useEffect(() => {
     executeMcpCommandRef.current = executeMcpCommand;
@@ -8494,24 +8565,22 @@ export function SketchForgeEditor({
     setSkfExporting(true);
     setNotice(target === "shared" ? "Packaging project for Docker shared storage…" : "Packaging editable project, history, and deduplicated assets…");
     try {
-      const exportedHistory = editorHistoryForExport(historyRef.current, historyIndexRef.current, historyLimit);
-      const bytes = await exportSkfProject({
-        projectId: projectInfoRef.current.projectId,
-        projectName: exportName.trim() || projectName,
-        createdAt: projectCreatedAt,
-        modifiedAt: projectModifiedAt,
-        shapes: shapesRef.current,
-        history: exportedHistory.entries,
-        historyIndex: exportedHistory.index,
-        assets: projectAssetsRef.current,
-        workspace: workspaceSettingsRef.current,
-        snapGrid,
-        placementElevation,
-        placementWorkplane,
-        sketchPlacementWorkplane: placementWorkplane,
-      });
+      const bytes = await packageSkfBytes(exportName, historyLimit);
       if (target === "shared" && onSaveSharedProject) {
-        setNotice(await onSaveSharedProject({ exportName: exportName.trim() || projectName, bytes }));
+        const sharedName = exportName.trim() || projectName;
+        try {
+          setNotice(await onSaveSharedProject({ exportName: sharedName, bytes }));
+          setSharedOverwrite(null);
+        } catch (error) {
+          // A name collision is a question, not a failure: hold the packaged
+          // bytes so answering "Overwrite" doesn't repackage the project.
+          if (error instanceof SharedProjectSaveError && error.failure.overwritable && error.failure.currentRevision) {
+            setSharedOverwrite({ exportName: sharedName, bytes, fileName: error.fileName, revision: error.failure.currentRevision });
+            setNotice(overwritePrompt(error.fileName));
+          } else {
+            throw error;
+          }
+        }
       } else {
         const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
         const result = await downloadBlobFile(projectExportFileName(exportName, "skf"), new Blob([buffer], { type: SKF_MEDIA_TYPE }));
@@ -8522,7 +8591,7 @@ export function SketchForgeEditor({
     } finally {
       setSkfExporting(false);
     }
-  }, [onSaveSharedProject, placementElevation, placementWorkplane, projectCreatedAt, projectModifiedAt, projectName, skfExporting, snapGrid]);
+  }, [onSaveSharedProject, packageSkfBytes, projectName, skfExporting]);
 
   const clearDesign = useCallback(() => {
     commitShapes([], [], "New empty design");
@@ -9098,6 +9167,19 @@ export function SketchForgeEditor({
           onThemePreferenceChange={onThemePreferenceChange}
           />
         )}
+        {sharedOverwrite ? (
+          <div className="scene-draft-notice" role="status">
+            <span className="scene-draft-text">{overwritePrompt(sharedOverwrite.fileName)}</span>
+            <div className="scene-draft-actions">
+              <button type="button" className="scene-draft-button primary" onClick={() => void confirmSharedOverwrite()} disabled={skfExporting}>
+                Overwrite
+              </button>
+              <button type="button" className="scene-draft-button" onClick={() => { setSharedOverwrite(null); setNotice("Save cancelled — nothing was overwritten"); }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
         {/* `shapes` initialises synchronously from the loaded scene, so the first
             render already holds the real scene: the draft check can run at once
             without risking an autosave of an empty scene over a good draft. */}

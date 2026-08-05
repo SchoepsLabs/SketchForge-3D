@@ -3,6 +3,7 @@
 import { Clock3, EllipsisVertical, FileUp, FolderKanban, Grid3X3, HomeIcon, List, Pencil, Plus, RefreshCw, Search, Settings, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SketchForgeEditor, importedShapeFromStl, importedShapeFromSvg } from "@/components/SketchForgeEditor";
+import { classifySharedSaveFailure, sharedProjectFileName, sharedSaveHeaders, SharedProjectSaveError, type SharedSaveMode } from "@/lib/sharedProjectSave";
 import { applyAppTheme, readStoredAppTheme, resolveAppTheme, storeAppTheme, type AppThemePreference, type ResolvedAppTheme } from "@/lib/appTheme";
 import { hydrateEditorHistoryState, type EditorHistoryEntry } from "@/lib/editorHistory";
 import { createLocalId } from "@/lib/localIds";
@@ -949,21 +950,29 @@ export default function Home() {
     }
   }, [openSkfProjectFromFile]);
 
-  const saveActiveProjectToShared = useCallback(async ({ exportName, bytes }: { exportName: string; bytes: Uint8Array }) => {
+  const saveActiveProjectToShared = useCallback(async ({ exportName, bytes, overwriteRevision }: { exportName: string; bytes: Uint8Array; overwriteRevision?: string | null }) => {
     const activeProject = projects.find((project) => project.id === activeProjectId);
     if (!activeProject) throw new Error("Open a local project before saving it to the shared space");
     const normalizedExportName = exportName.trim() || activeProject.name;
     const saveBackToSource = Boolean(activeProject.sharedProject && normalizedExportName === activeProject.name);
     const fileName = saveBackToSource && activeProject.sharedProject
       ? activeProject.sharedProject.fileName
-      : `${normalizedExportName.replace(/\.skf$/i, "")}.skf`;
-    const headers: Record<string, string> = { "Content-Type": "application/vnd.sketchforge.project+zip" };
-    if (saveBackToSource && activeProject.sharedProject) headers["If-Match"] = `"${activeProject.sharedProject.revision}"`;
-    else headers["If-None-Match"] = "*";
+      : sharedProjectFileName(normalizedExportName, activeProject.name);
+    // Overwrite is a deliberate second attempt: the user answered "yes" to the
+    // confirm bar, so we replace the exact revision the name-taken reply named.
+    const mode: SharedSaveMode = overwriteRevision
+      ? { kind: "replace", revision: overwriteRevision }
+      : saveBackToSource && activeProject.sharedProject
+        ? { kind: "replace", revision: activeProject.sharedProject.revision }
+        : { kind: "create" };
+    const headers = sharedSaveHeaders(mode);
     const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
     const response = await fetch(`/api/shared-projects?fileName=${encodeURIComponent(fileName)}`, { method: "POST", headers, body });
-    const payload = await response.json().catch(() => ({})) as { error?: string; project?: SharedProject };
-    if (!response.ok || !payload.project) throw new Error(payload.error ?? "Could not save the shared project");
+    const payload = await response.json().catch(() => ({})) as { error?: string; reason?: string; currentRevision?: string | null; project?: SharedProject };
+    if (!response.ok || !payload.project) {
+      const failure = classifySharedSaveFailure(response.status, payload);
+      throw new SharedProjectSaveError(failure, fileName);
+    }
     const savedProject = payload.project;
     setProjects((current) => current.map((project) => project.id === activeProject.id
       ? { ...project, sharedProject: { fileName: savedProject.fileName, revision: savedProject.revision } }

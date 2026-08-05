@@ -127,7 +127,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const root = sharedProjectsDirectory();
-  if (!root) return NextResponse.json({ error: "Shared project storage is disabled" }, { status: 404 });
+  if (!root) {
+    return NextResponse.json(
+      { error: `Shared project storage is off: set ${SHARED_PROJECTS_ENV} to the library directory and restart the server.`, reason: "disabled" },
+      { status: 404 },
+    );
+  }
   if (!sameOriginRequest(request)) return NextResponse.json({ error: "Shared projects only accept same-origin saves" }, { status: 403 });
 
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
@@ -153,7 +158,7 @@ export async function POST(request: Request) {
       lockHandle = await fs.open(lockPath, "wx");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-        return NextResponse.json({ error: "This shared project is currently being saved by someone else" }, { status: 409 });
+        return NextResponse.json({ error: "This shared project is currently being saved by someone else", reason: "locked" }, { status: 409 });
       }
       throw error;
     }
@@ -162,14 +167,26 @@ export async function POST(request: Request) {
     const currentRevision = currentStat ? revisionForStat(currentStat) : null;
     const expectedRevision = unquoteEtag(request.headers.get("if-match"));
     const createOnly = request.headers.get("if-none-match") === "*";
-    if (currentStat && (createOnly || !expectedRevision || expectedRevision !== currentRevision)) {
+    if (currentStat && (createOnly || !expectedRevision)) {
+      // A first-time save onto a name that is already taken. That is a question
+      // for the user ("overwrite?"), not a lost-update conflict, so it is named
+      // separately and carries the revision an overwrite would have to match.
       return NextResponse.json(
-        { error: "The shared project changed after you opened it. Reload it or save under a different name.", currentRevision },
+        { error: `A shared project named "${fileName.replace(/\.skf$/i, "")}" already exists.`, reason: "name-taken", currentRevision },
+        { status: 409 },
+      );
+    }
+    if (currentStat && expectedRevision !== currentRevision) {
+      return NextResponse.json(
+        { error: "The shared project changed after you opened it. Reload it or save under a different name.", reason: "stale-revision", currentRevision },
         { status: 409 },
       );
     }
     if (!currentStat && expectedRevision) {
-      return NextResponse.json({ error: "The shared project no longer exists. Save it under a different name." }, { status: 409 });
+      return NextResponse.json(
+        { error: "The shared project no longer exists. Save it under a different name.", reason: "missing" },
+        { status: 409 },
+      );
     }
 
     const temporaryHandle = await fs.open(temporaryPath, "wx");

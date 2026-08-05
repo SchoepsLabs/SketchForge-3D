@@ -85,7 +85,8 @@ export type SketchForgeMcpCommandName =
   | "list_edges"
   | "apply_edge_treatment"
   | "inspect_errors"
-  | "capture_image";
+  | "capture_image"
+  | "save_project";
 
 export type SketchForgeMcpCommand = {
   id: string;
