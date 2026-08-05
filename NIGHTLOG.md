@@ -7,6 +7,31 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 5, task 3 (post-placement polish) + docs/SHORTCUTS.md
+- Audited first, as the task says, and the audit changed the job: arrow keys were **already bound** —
+  arrows nudge X/Z, Ctrl+arrows raise/lower — so there was nothing to add. What was actually wrong is
+  that they stepped a hardcoded 1 mm (5 mm with Shift) no matter what the snap grid was set to, so a
+  nudged part could land off the very grid a dragged part snaps to. One press is now **one snap step**,
+  Shift is **10×**, and with snapping Off it falls back to the historical 1 mm so nothing gets stuck.
+- `snapStep` turned out to be copy-pasted in `WorkplaneViewport.tsx` and `SketchWorkspace.tsx`. Rather
+  than add a third copy in the editor it moved to `lib/gridSnap.ts` as `snapGridStep`, both callers now
+  import it, and `nudgeStepForSnap` is built on top (5 new tests, including the two labels that are not
+  numbers: `Off` → 0 and `Brick` → 8 mm).
+- Also remembered the thing that silently breaks this kind of change: `snapGrid` had to go into the
+  keydown effect's dependency array, or the handler would keep nudging by whatever the grid was when
+  the editor mounted.
+- Wrote **`docs/SHORTCUTS.md`**, the doc both this task's and Block 1's acceptance criteria point at.
+  It covers every key bound across all three handlers — the editor keydown block, the edge-modifier
+  handler (Esc/Enter), and the viewport keydown block (`W`/`Shift+W`, `F`/`Home`, `O`, `+`/`-`) — plus
+  the placement mouse modifiers (Shift underside, Alt+click repeat), the sketch-mode handler that
+  shadows the shape shortcuts, and the chat dock keys. It also records the one real gap the audit
+  confirms: `F` resets the whole view and there is still no fit-to-selection, which stays Block 1's
+  `Shift+F` task. Worth knowing for any future key work: all three handlers already bail on
+  INPUT/TEXTAREA/SELECT/contentEditable targets, so no new field needs its own guard.
+- typecheck + test (344) green.
+- Blocked: nothing.
+- Next: Block 5 task 4 — right-click context menu, new `components/workplane/ContextMenu.tsx`.
+
 ## 2026-08-05 — Block 5, task 2 (smart duplicate / Ctrl+D transform replay)
 - Shipped: new `lib/patternShapes.ts` (27 tests) + `duplicateSelected` in `SketchForgeEditor.tsx` now
   routing through `nextDuplicateStep`. Duplicate a shape, move the copy, and every further Ctrl+D
