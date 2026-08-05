@@ -7,6 +7,30 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 7, task 1 (H2D shop profile in the dock)
+- Shipped: new `lib/assistantDesignProfile.ts` + a profile section in `buildAssistantSystemPrompt`,
+  wired into `api/assistant/route.ts`. 11 tests.
+- Design decision: the profile is read **per request** rather than baked into the prompt builder, so
+  editing `docs/assistant/H2D_DESIGN_PROFILE.md` changes the next reply with no rebuild, and none of
+  it reaches the client bundle. A missing profile is not an error — the dock still works, it just
+  loses the shop rules. 20k-char clamp so a runaway profile can't crowd out the scene summary.
+- Ordering matters and there is a test for it: the profile goes **before** the scene summary. The
+  profile is standing constraints on every dimension chosen; the scene is current state, and its
+  section already says "trust it over anything earlier".
+- **Verified live** on editor 84306 with the roadmap's acceptance prompt and nothing more — "add a
+  mounting plate with four M3 clearance holes, 60x40mm". Unprompted, it produced: **Ø3.4** cutters
+  (M3 clearance + the profile's +0.2 mm vertical-hole compensation), a 3 mm plate (≥0.9 floor rule),
+  and cutters at `height: 7, elevation: -2` so they overshoot both faces of a 3 mm plate — the
+  profile's cutter rule, quoted almost exactly. It then boolean-cut and renamed the result to one
+  object. Test objects deleted afterwards; the pre-existing Group was left untouched (I listed the
+  scene first and only deleted ids matching my own prefix).
+- Note for the next session: the dev server was **not** running on 3001 when this session started
+  (only the Docker prod container on 3000), so I started it. The editor tab reconnected on its own
+  with its scene intact — the Web Worker heartbeat from 2026-08-04 did its job across a server restart.
+- typecheck + test (370) green.
+- Blocked: nothing.
+- Next: Block 7 task 2 — autosave / crash-proof scenes.
+
 ## 2026-08-05 — Block 5, task 7 (toolbar shortcut hints) + task 6 blocked
 - Shipped task 7: new `lib/shortcutHints.ts` is the one table; `renderToolButton` builds every tooltip
   from it, and a test asserts each key in the table also appears in `docs/SHORTCUTS.md` — so the
