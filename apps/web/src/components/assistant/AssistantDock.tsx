@@ -16,7 +16,9 @@ import {
   type AssistantToolEntry,
 } from "@/lib/assistantDockState";
 import { ASSISTANT_ROUTE, createAssistantEventDecoder } from "@/lib/assistantProtocol";
+import { buildAssistantSceneContext } from "@/lib/assistantSceneContext";
 import { readMcpEditorNumber } from "@/lib/mcpEditorIdentity";
+import type { SketchForgeMcpSceneSummary } from "@/lib/sketchforgeMcpProtocol";
 import type { WorkplaneShape } from "@/types/sketchforge";
 
 /**
@@ -84,9 +86,11 @@ export type AssistantDockProps = {
   onReadShapes?: () => WorkplaneShape[];
   /** Commits a restored snapshot through the editor's normal undoable path. */
   onRestoreShapes?: (shapes: WorkplaneShape[], label: string) => void;
+  /** Live scene summary, rebuilt per message for the assistant's system prompt. */
+  onReadScene?: () => SketchForgeMcpSceneSummary;
 };
 
-export function AssistantDock({ onReadShapes, onRestoreShapes }: AssistantDockProps = {}) {
+export function AssistantDock({ onReadShapes, onRestoreShapes, onReadScene }: AssistantDockProps = {}) {
   const [state, dispatch] = useReducer(assistantDockReducer, initialAssistantDockState);
   const [collapsed, setCollapsed] = useState(true);
   const [available, setAvailable] = useState(false);
@@ -99,9 +103,11 @@ export function AssistantDock({ onReadShapes, onRestoreShapes }: AssistantDockPr
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const readShapesRef = useRef(onReadShapes);
   const restoreShapesRef = useRef(onRestoreShapes);
+  const readSceneRef = useRef(onReadScene);
 
   readShapesRef.current = onReadShapes;
   restoreShapesRef.current = onRestoreShapes;
+  readSceneRef.current = onReadScene;
 
   const versions = useMemo(() => assistantVersionOptions(checkpoints), [checkpoints]);
 
@@ -151,6 +157,7 @@ export function AssistantDock({ onReadShapes, onRestoreShapes }: AssistantDockPr
     // Snapshot before the batch: every scene edit in this turn happens between
     // here and the finally below, whether the turn succeeds, fails, or is stopped.
     const before = readShapesRef.current?.() ?? null;
+    const sceneSummary = readSceneRef.current?.() ?? null;
     const checkpointId = messageId("iteration");
 
     const controller = new AbortController();
@@ -164,6 +171,9 @@ export function AssistantDock({ onReadShapes, onRestoreShapes }: AssistantDockPr
           message: text,
           sessionId: sessionIdRef.current,
           editorNumber: readMcpEditorNumber(),
+          // Rebuilt per message, so a resumed session never acts on the scene
+          // as it was three turns ago.
+          sceneContext: sceneSummary ? buildAssistantSceneContext(sceneSummary) : null,
         }),
       });
 

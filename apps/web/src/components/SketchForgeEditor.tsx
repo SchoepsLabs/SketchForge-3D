@@ -8967,7 +8967,7 @@ export function SketchForgeEditor({
           onThemePreferenceChange={onThemePreferenceChange}
           />
         )}
-        <AssistantDock onReadShapes={readShapesForAssistant} onRestoreShapes={restoreShapesForAssistant} />
+        <AssistantDock onReadShapes={readShapesForAssistant} onRestoreShapes={restoreShapesForAssistant} onReadScene={mcpSceneSnapshot} />
       </div>
       {edgeModifier ? (
         <EdgeModifierPanel
