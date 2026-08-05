@@ -7,6 +7,42 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Session summary (Block 7 complete, Block 1 cleared, Block 4 started)
+- **Shipped, 20 commits on `lumera-custom`, all pushed.** Block 7 (all five tasks), all three Block 1
+  leftovers, the tested core of Block 4's numeric transform entry, and a drift guard for the MCP
+  command surface. Tests went 426 → **467**; typecheck, test, perf and `npm run build` all green, tree
+  clean.
+- **Block 7 — one-place co-design.** The dock now designs to the shop's numbers (H2D profile injected
+  per request), the scene survives a crash (localStorage autosave with a Resume bar), saving into the
+  shared library can finally overwrite on purpose, `send to print` drops a dated STL into a watched
+  outbox, and every dock turn is appended to `docs/assistant/SESSIONS.md`. Two of those were verified
+  live end to end: the profile produced Ø3.4 M3 holes and overshooting cutters unprompted, and the
+  session log wrote its first real entry.
+- **Block 1 — cleared.** Distribute evenly [U51] with ends-never-move semantics, plus both performance
+  baselines in `docs/perf/BASELINE.md`.
+- **Three findings worth carrying forward:**
+  1. **~800 KB of the editor's 1.24 MB route JS is manifold**, base64-inlined into a generated module
+     and *statically* imported. Deferring it behind the existing `getManifoldRuntime()` is the single
+     biggest first-load win available, and the perf run prices the deferred cost at 12 ms + 17 ms.
+     Deliberately left as its own task: it lands in `SketchForgeEditor.tsx` and wants a session that
+     can watch a boolean actually happen.
+  2. **`JSON.stringify` of a 500k-triangle scene costs 888 ms**, and it runs on every save, export and
+     autosave tick. It caught a real bug in the morning's autosave (quota checked *after* serialising)
+     which is now fixed by estimating first. A binary mesh encoding is the obvious next target.
+  3. **A stale browser bundle looks exactly like a missing feature.** `send_to_print` returned "Unknown
+     MCP command" from a tab that had reconnected to a restarted dev server but never reloaded its JS.
+     The heartbeat reconnecting is *not* evidence the tab has the new code.
+- **Deferred on purpose, both needing a visually-supervised session:** Block 4's numeric-entry wiring
+  into live drag sessions (the maths is tested; applying it means synthesising pointer coordinates or
+  duplicating the transform maths, and a wrong delta moves a part to the wrong place), and Block 5's
+  icon unification (22 hand-drawn icons whose acceptance is a visual diff). Neither is blocked on
+  knowledge — both are blocked on being able to see the result.
+- **First thing to check next session:** reload the editor tab, then try `send it to print` and
+  `save the project as <name>` from the dock, and kill/reopen the tab mid-design to watch the Resume
+  bar appear. Those are the three acceptance criteria this session could only verify by proxy.
+- PR candidates now queued for Block 4: STL hardening, OBJ import, centre-on-plate [U50], distribute
+  [U51], and `lib/transformNumericInput.ts` [U32].
+
 ## 2026-08-05 — Block 1 leftovers (distribute evenly + both performance baselines)
 - **Distribute evenly** [U51]: new `lib/distributeShapes.ts` (11 tests) + `Distribute X` / `Distribute Z`
   on the align overlay, shown once three or more shapes are selected. Distribute belongs to the same
