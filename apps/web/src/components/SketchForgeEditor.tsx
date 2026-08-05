@@ -29,6 +29,7 @@ import {
   ToolbarDuplicateIcon,
   ToolbarHoleIcon,
   ToolbarLockIcon,
+  ToolbarSendToPrintIcon,
   ToolbarCenterOnWorkplaneIcon,
   ToolbarDropToWorkplaneIcon,
   ToolbarExportIcon,
@@ -116,6 +117,7 @@ import { readMcpEditorIdentity } from "@/lib/mcpEditorIdentity";
 import { clearActiveShapeDragAsset, serializeShapeDragAsset, setActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
 import { buildWorkplaneContextMenuItems } from "@/lib/workplaneContextMenu";
 import { overwritePrompt, SharedProjectSaveError } from "@/lib/sharedProjectSave";
+import { printOutboxFileName } from "@/lib/printOutbox";
 import { isMacPlatform, toolbarTooltip, type ShortcutHintId } from "@/lib/shortcutHints";
 import {
   applyTransformDelta,
@@ -7826,6 +7828,46 @@ export function SketchForgeEditor({
     };
   }, [initialSnap]);
 
+  /**
+   * Print handoff: writes the scene (or the selection) into the watched outbox
+   * the slicer reads. One action, no dialog — the file name carries the project
+   * and the date so it is identifiable later.
+   */
+  const sendToPrint = useCallback(async () => {
+    const sourceShapes = selectedIdsRef.current.length ? shapesRef.current.filter((shape) => selectedIdsRef.current.includes(shape.id)) : shapesRef.current;
+    const exportable = sourceShapes.filter((shape) => !shape.hole);
+    if (exportable.length === 0) {
+      throw new Error(selectedIdsRef.current.length ? "Select at least one solid shape to send to print" : "Add a solid shape before sending to print");
+    }
+    const selectionOnly = selectedIdsRef.current.length > 0 && exportable.length !== shapesRef.current.filter((shape) => !shape.hole).length;
+    const fileName = printOutboxFileName({
+      projectName: projectInfoRef.current.projectName,
+      date: new Date(),
+      selectionOnly,
+    });
+    const stl = toStl(exportable.map(meshForShape));
+    const response = await fetch(`/api/print-outbox?fileName=${encodeURIComponent(fileName)}`, {
+      method: "POST",
+      headers: { "Content-Type": "model/stl" },
+      body: stl,
+    });
+    const payload = (await response.json().catch(() => ({}))) as { fileName?: string; directory?: string; error?: string };
+    if (!response.ok || !payload.fileName) throw new Error(payload.error ?? "Could not send to print");
+    return {
+      fileName: payload.fileName,
+      directory: payload.directory ?? "",
+      shapeCount: exportable.length,
+      selectionOnly,
+      message: `Sent ${payload.fileName} to the print outbox`,
+    };
+  }, []);
+
+  const sendToPrintFromToolbar = useCallback(() => {
+    void sendToPrint()
+      .then((result) => setNotice(result.message))
+      .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Could not send to print"));
+  }, [sendToPrint]);
+
   /** Packages the live scene as .skf bytes. Shared by the export panel and the dock's save_project tool. */
   const packageSkfBytes = useCallback(
     async (exportName: string, historyLimit: SkfHistoryLimit = "unlimited") => {
@@ -8153,6 +8195,12 @@ export function SketchForgeEditor({
         };
       }
 
+      if (command.action === "send_to_print") {
+        const result = await sendToPrint();
+        setNotice(result.message);
+        return result;
+      }
+
       if (command.action === "save_project") {
         if (!onSaveSharedProject) throw new Error("Shared project storage is not available in this deployment");
         const requestedName = mcpString(params.name, "").trim() || projectInfoRef.current.projectName;
@@ -8201,6 +8249,7 @@ export function SketchForgeEditor({
     mcpSceneSnapshot,
     onSaveSharedProject,
     packageSkfBytes,
+    sendToPrint,
     placementElevation,
     prepareCadModifierForMcp,
   ]);
@@ -9014,6 +9063,7 @@ export function SketchForgeEditor({
         canUngroup={selectedShapes.some((shape) => Boolean(shape.groupedShapes?.length))}
         hasClipboard={clipboard.length > 0 || systemClipboardSupported}
         hasSelection={hasSelection}
+        hasShapes={shapes.length > 0}
         hiddenShapeCount={shapes.filter((shape) => shape.hidden).length}
         selectionHidden={hasSelection && selectedShapes.every((shape) => shape.hidden)}
         alignMode={alignMode}
@@ -9048,6 +9098,7 @@ export function SketchForgeEditor({
         onDelete={deleteSelected}
         onDuplicate={duplicateSelected}
         onDropToWorkplane={dropSelectedToWorkplane}
+        onSendToPrint={sendToPrintFromToolbar}
         onToggleHole={() => setSelectionHoleMode(!selectionIsHole)}
         onToggleLock={toggleLocked}
         selectionIsHole={selectionIsHole}
@@ -9361,6 +9412,7 @@ function SecondaryToolbar({
   canUndo,
   hasClipboard,
   hasSelection,
+  hasShapes,
   hiddenShapeCount,
   selectionHidden,
   mirrorMode,
@@ -9385,6 +9437,7 @@ function SecondaryToolbar({
   onDelete,
   onDuplicate,
   onDropToWorkplane,
+  onSendToPrint,
   onToggleHole,
   onToggleLock,
   selectionIsHole,
@@ -9420,6 +9473,7 @@ function SecondaryToolbar({
   canUndo: boolean;
   hasClipboard: boolean;
   hasSelection: boolean;
+  hasShapes: boolean;
   hiddenShapeCount: number;
   selectionHidden: boolean;
   mirrorMode: boolean;
@@ -9444,6 +9498,7 @@ function SecondaryToolbar({
   onDelete: () => void;
   onDuplicate: () => void;
   onDropToWorkplane: () => void;
+  onSendToPrint: () => void;
   onToggleHole: () => void;
   onToggleLock: () => void;
   selectionIsHole: boolean;
@@ -9595,6 +9650,7 @@ function SecondaryToolbar({
   const arrangeTools = [
     { label: "Drop to workplane", icon: ToolbarDropToWorkplaneIcon, action: onDropToWorkplane, enabled: hasSelection, shortcut: "dropToWorkplane" as const },
     { label: "Center on plate", icon: ToolbarCenterOnWorkplaneIcon, action: onCenterOnPlate, enabled: hasSelection },
+    { label: "Send to print", icon: ToolbarSendToPrintIcon, action: onSendToPrint, enabled: hasShapes },
   ];
   const renderToolButton = (tool: (typeof leftTools)[number] | (typeof visibilityTools)[number] | (typeof combineTools)[number] | (typeof modifyTools)[number] | (typeof arrangeTools)[number]) => {
     const { icon: Icon, action, enabled, label } = tool;

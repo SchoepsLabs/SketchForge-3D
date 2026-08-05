@@ -237,6 +237,11 @@ const tools = [
     inputSchema: editorTargetSchema,
   },
   {
+    name: "sketchforge_send_to_print",
+    description: "Export the current scene (or the current selection) as an STL into the watched print outbox folder, ready for the slicer. Named <project>-<date>.stl.",
+    inputSchema: editorTargetSchema,
+  },
+  {
     name: "sketchforge_save_project",
     description: "Save the current SketchForge project into the shared parts library as a .skf file. Creates a new file by default; pass overwrite:true only when the user asked to replace an existing part.",
     inputSchema: {
@@ -345,6 +350,8 @@ async function callTool(name, args) {
       return bridgeCommand("capture_image", args, 30000);
     case "sketchforge_save_project":
       return bridgeCommand("save_project", args, 60000);
+    case "sketchforge_send_to_print":
+      return bridgeCommand("send_to_print", args, 60000);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

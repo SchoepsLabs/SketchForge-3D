@@ -203,6 +203,17 @@ export function ToolbarHoleIcon(props: IconProps) {
   );
 }
 
+export function ToolbarSendToPrintIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <path d="M15 18V8h18v10" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+      <rect x="8" y="18" width="32" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M15 28h18v12H15z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+      <circle cx="34" cy="24" r="1.8" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function ToolbarLockIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
