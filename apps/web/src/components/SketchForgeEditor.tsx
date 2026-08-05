@@ -50,6 +50,7 @@ import {
 } from "./icons";
 import { WorkplaneViewport } from "./WorkplaneViewport";
 import { AssistantDock } from "./assistant/AssistantDock";
+import { ContextMenu } from "./workplane/ContextMenu";
 import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "./SketchWorkspace";
 import { EdgeModifierPanel } from "./workplane/EdgeModifierPanel";
 import {
@@ -110,6 +111,7 @@ import {
 import { placeSketchExtrusion } from "@/lib/sketchPlacement";
 import { readMcpEditorIdentity } from "@/lib/mcpEditorIdentity";
 import { clearActiveShapeDragAsset, serializeShapeDragAsset, setActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
+import { buildWorkplaneContextMenuItems } from "@/lib/workplaneContextMenu";
 import {
   applyTransformDelta,
   isMemorisedDuplicateStep,
@@ -5348,6 +5350,7 @@ export function SketchForgeEditor({
   const [stepExporting, setStepExporting] = useState(false);
   const [skfExporting, setSkfExporting] = useState(false);
   const [alignMode, setAlignMode] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [alignAnchorId, setAlignAnchorId] = useState<string | null>(null);
   const [alignPreview, setAlignPreview] = useState<{ axis: AlignAxis; target: AlignTarget } | null>(null);
   const [mirrorMode, setMirrorMode] = useState(false);
@@ -7711,6 +7714,67 @@ export function SketchForgeEditor({
     );
   }, [commitShapes, selectedShape, selectedShapes.length, shapes]);
 
+  /**
+   * Right-click menu. The viewport decides *whether* it was a click and not an
+   * orbit-drag; the editor decides what the entries do — and every one of them
+   * is a callback the toolbar or inspector already calls, so there is no second
+   * implementation of any action here.
+   */
+  const openWorkplaneContextMenu = useCallback(
+    ({ x, y, shapeId }: { x: number; y: number; shapeId: string | null }) => {
+      const targeted = shapeId && !selectedIdsRef.current.includes(shapeId) ? shapeId : null;
+      if (targeted) {
+        setSelectedIds([targeted]);
+      } else if (!shapeId && selectedIdsRef.current.length === 0) {
+        return;
+      }
+      setContextMenu({ x, y });
+    },
+    [],
+  );
+
+  const contextMenuItems = useMemo(
+    () =>
+      buildWorkplaneContextMenuItems(
+        {
+          selectedCount: selectedShapes.length,
+          allLocked: selectedShapes.length > 0 && selectedShapes.every((shape) => shape.locked),
+          anyLocked: selectedShapes.some((shape) => shape.locked),
+          allHoles: selectedShapes.length > 0 && selectedShapes.every((shape) => Boolean(shape.hole)),
+          canGroup: selectedShapes.length > 1 && selectedShapes.every((shape) => !shape.locked),
+          canUngroup: selectedShapes.some((shape) => Boolean(shape.groupedShapes?.length)),
+          canSeparateParts: canSeparateSelectedParts,
+        },
+        {
+          duplicate: duplicateSelected,
+          delete: deleteSelected,
+          group: () => void groupSelected(),
+          ungroup: ungroupSelected,
+          separateParts: separateSelectedParts,
+          makeHole: () => setSelectionHoleMode(true),
+          makeSolid: () => setSelectionHoleMode(false),
+          toggleLock: toggleLocked,
+          hide: toggleHidden,
+          dropToWorkplane: dropSelectedToWorkplane,
+          centerOnPlate: centerSelectedOnPlate,
+        },
+      ),
+    [
+      canSeparateSelectedParts,
+      centerSelectedOnPlate,
+      deleteSelected,
+      dropSelectedToWorkplane,
+      duplicateSelected,
+      groupSelected,
+      selectedShapes,
+      separateSelectedParts,
+      setSelectionHoleMode,
+      toggleHidden,
+      toggleLocked,
+      ungroupSelected,
+    ],
+  );
+
   const mcpSceneSnapshot = useCallback((includeRawShapes = false): SketchForgeMcpSceneSummary & { rawShapes?: WorkplaneShape[] } => {
     const projectInfo = projectInfoRef.current;
     const currentShapes = shapesRef.current;
@@ -8998,6 +9062,7 @@ export function SketchForgeEditor({
           onEditSketch={beginSketchEdit}
           canSeparateParts={canSeparateSelectedParts}
           onSeparateParts={separateSelectedParts}
+          onContextMenuRequest={openWorkplaneContextMenu}
           onUpdateShape={updateShape}
           onWorkspaceSettingsChange={updateProjectWorkspaceSettings}
           onWorkplaneModeChange={closeViewportWorkplaneMode}
@@ -9012,6 +9077,14 @@ export function SketchForgeEditor({
           />
         )}
         <AssistantDock onReadShapes={readShapesForAssistant} onRestoreShapes={restoreShapesForAssistant} onReadScene={mcpSceneSnapshot} />
+        {contextMenu ? (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenuItems}
+            onClose={() => setContextMenu(null)}
+          />
+        ) : null}
       </div>
       {edgeModifier ? (
         <EdgeModifierPanel

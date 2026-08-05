@@ -7439,3 +7439,52 @@ html[data-theme="dark"] .assistant-tool-failure {
   cursor: default;
   opacity: 0.45;
 }
+
+/* ---- Workplane right-click menu (Block 5) -------------------------------- */
+
+.workplane-context-menu {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 176px;
+  padding: 5px;
+  color: var(--foreground);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.workplane-context-item {
+  padding: 6px 10px;
+  font-size: 13px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border-radius: 5px;
+}
+
+.workplane-context-item:hover:not(:disabled) {
+  background: var(--tile-hover);
+}
+
+.workplane-context-item:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.workplane-context-item.danger:hover:not(:disabled) {
+  color: #b4534f;
+}
+
+.workplane-context-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+html[data-theme="dark"] .workplane-context-item.danger:hover:not(:disabled) {
+  color: #e79b95;
+}

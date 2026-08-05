@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, Home, Minus, MousePointer2, PanelsTopLeft, Plus, Ruler, X } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type DragEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type SetStateAction, type WheelEvent as ReactWheelEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type DragEvent, type MouseEvent as ReactMouseEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type SetStateAction, type WheelEvent as ReactWheelEvent } from "react";
 import * as THREE from "three";
 import { Brush, Evaluator, HOLLOW_INTERSECTION } from "three-bvh-csg";
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from "three-mesh-bvh";
@@ -98,6 +98,8 @@ const RENDER_LAYER_HELPERS = 2;
 const RENDER_LAYER_MODIFIERS = 3;
 const RENDER_LAYER_PREVIEWS = 4;
 const BVH_PICKING_TRIANGLE_THRESHOLD = 512;
+// Same slack the click-to-place gesture allows before it counts as a drag.
+const CONTEXT_MENU_DRAG_THRESHOLD = 5;
 const fontLoader = new FontLoader();
 const textFonts: Record<string, Font> = {
   Multilanguage: fontLoader.parse(helvetikerBoldFontJson as FontData),
@@ -143,6 +145,7 @@ type WorkplaneViewportProps = {
   initialWorkspace?: WorkplaneWorkspaceSettings;
   workspaceSettingsKey?: string | null;
   onAddShape: (shape: ShapeAsset, point?: PlacementPoint, workplane?: PlacementWorkplane) => void;
+  onContextMenuRequest?: (request: { x: number; y: number; shapeId: string | null }) => void;
   onAlignAnchorChange: (id: string) => void;
   onAlignPreview: (axis: AlignAxis, target: AlignTarget) => void;
   onAlignPreviewClear: () => void;
@@ -2158,6 +2161,7 @@ export function WorkplaneViewport({
   initialWorkspace,
   workspaceSettingsKey,
   onAddShape,
+  onContextMenuRequest,
   onAlignAnchorChange,
   onAlignPreview,
   onAlignPreviewClear,
@@ -2263,6 +2267,9 @@ export function WorkplaneViewport({
   // builds text/gear geometry, too heavy to redo on every dragover tick).
   const dragGhostRef = useRef<{ assetId: string; base: WorkplaneShape } | null>(null);
   const dragPlacementRef = useRef<{ point: PlacementPoint; workplane: PlacementWorkplane } | null>(null);
+  // Where the right button went down, so a right-drag orbit can be told apart
+  // from a right-click that wants the context menu.
+  const contextPressRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     pendingShapeAssetRef.current = pendingShapeAsset;
@@ -4508,6 +4515,40 @@ export function WorkplaneViewport({
     [clearMoveDimensions, onAddShape, onInteractionActiveChange, onPendingShapeChange, onSelectShape, onUpdateShape, pickPlacementSurface, rememberResizeAnchor, setMarqueeFromState, shapesInMarquee, suppressLiftEditAfterDrag, toPlacementWorkplanePoint],
   );
 
+  /**
+   * Right-click menu gesture. The right button also orbits or pans (depending on
+   * the mouse scheme), and the browser still fires `contextmenu` at the end of
+   * such a drag — on Windows at button-up, elsewhere at button-down. Measuring
+   * the distance from where the right button went down covers both timings: a
+   * drag of more than a few pixels was a camera move, not a menu request.
+   */
+  const handleContextMenu = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const press = contextPressRef.current;
+      contextPressRef.current = null;
+      if (!onContextMenuRequest) return;
+      if (
+        workplaneModeRef.current ||
+        pendingShapeAssetRef.current ||
+        modifierActiveRef.current ||
+        rulerModeRef.current ||
+        rulerDeleteModeRef.current ||
+        rulerMoveModeRef.current
+      ) {
+        return;
+      }
+      if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) >= CONTEXT_MENU_DRAG_THRESHOLD) {
+        return;
+      }
+      // Right-clicking an unselected shape acts on that shape, the way every
+      // other app does; right-clicking an already-selected one keeps the set.
+      const shapeId = pickShape(event.clientX, event.clientY);
+      onContextMenuRequest({ x: event.clientX, y: event.clientY, shapeId });
+    },
+    [onContextMenuRequest, pickShape],
+  );
+
   const clearDragGhost = useCallback(() => {
     dragGhostRef.current = null;
     dragPlacementRef.current = null;
@@ -4946,6 +4987,10 @@ export function WorkplaneViewport({
           <div
             className="three-workplane-host"
             ref={hostRef}
+            onContextMenu={handleContextMenu}
+            onPointerDownCapture={(event) => {
+              if (event.button === 2) contextPressRef.current = { x: event.clientX, y: event.clientY };
+            }}
             onDragOver={handleDragOver}
             onDragLeave={clearDragGhost}
             onDrop={handleDrop}
