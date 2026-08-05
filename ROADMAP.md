@@ -34,7 +34,7 @@ stay out of the sketch pipeline.
       optional drop to Y=0), button next to the existing align control.
       *Accept:* unit test on the pure fn for single + multi-selection; button centers an imported STL in
       one click. **PR candidate.** [U50]
-- [ ] **Distribute evenly** — pure fn in new `lib/distributeShapes.ts` (even spacing along X or Z,
+- [x] **Distribute evenly** — pure fn in new `lib/distributeShapes.ts` (even spacing along X or Z,
       by gap or by span), wired into the align overlay.
       *Accept:* unit test for 3+ objects of differing widths, gaps equal within 1e-6; end objects unmoved.
       **PR candidate.** [U51]
@@ -51,12 +51,12 @@ stay out of the sketch pipeline.
       the whole view; there is no fit-*selection*-to-view.
       *Accept:* doc lists every bound key across both files and matches the code; `Shift+F` frames the
       current selection and leaves plain `F` as-is. [C §3.1]
-- [ ] **First-load performance baseline** — record route JS sizes and OCCT/Manifold WASM fetch timing
+- [x] **First-load performance baseline** — record route JS sizes and OCCT/Manifold WASM fetch timing
       into new `docs/perf/BASELINE.md`, then name the top three payload contributors and whether the
       WASM kernels load eagerly or on demand.
       *Accept:* baseline numbers committed with the command used to get them; one concrete deferral
       candidate identified with an estimated saving. (Fix lands as its own task.)
-- [ ] **Large-model performance** — extend `tests/perf/stl-import.perf.ts` to a 500k-triangle fixture
+- [x] **Large-model performance** — extend `tests/perf/stl-import.perf.ts` to a 500k-triangle fixture
       and record import + first-boolean timings in the same baseline doc.
       *Accept:* `npm run perf` reports both numbers; any step over ~2 s is called out with its hot path.
 

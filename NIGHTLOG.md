@@ -7,6 +7,44 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 1 leftovers (distribute evenly + both performance baselines)
+- **Distribute evenly** [U51]: new `lib/distributeShapes.ts` (11 tests) + `Distribute X` / `Distribute Z`
+  on the align overlay, shown once three or more shapes are selected. Distribute belongs to the same
+  family as align and that overlay is on screen exactly when a multi-selection exists, which is what
+  the roadmap asked for.
+  - The rule that makes it feel right: **the two end objects never move**. They define the span; the
+    rest are redistributed inside it. That is also what makes a second press a no-op instead of a slow
+    drift — there is a test for the second press.
+  - Ordering is by bounds, not selection order, so the result doesn't depend on click order. A locked
+    shape keeps its place *and still consumes its slot*, so neighbours stay evenly spaced around it.
+    Shapes overlapping more than the span allows are refused (`no-room`) rather than piled up.
+  - **PR candidate** — upstream #51 asks for exactly this and the lib has no fork dependencies.
+- **First-load baseline**: new `docs/perf/BASELINE.md`. Editor route is **1.24 MB** route JS / 1.35 MB
+  first load. Top contributors: `src/generated/manifoldWasmBase64.ts` (**719 KB** — the 527 KB manifold
+  WASM base64-encoded into a TS module) and `manifoldModuleSource.ts` (80 KB), then three.js.
+  - The finding worth acting on: **both manifold modules are static imports** at the top of
+    `SketchForgeEditor.tsx`, so every first load ships a boolean engine most sessions never use.
+    OCCT, by contrast, is 21.1 MB sitting in `public/occt/` and fetched only when STEP or a CAD
+    modifier runs — it never enters the bundle. That is the pattern to copy.
+  - Deferral candidate with a number: move both generated modules behind a dynamic `import()` inside
+    the `getManifoldRuntime()` that already exists → **~800 KB off 1.24 MB (~65%)**, in exchange for a
+    one-off fetch at the first boolean. The perf run prices that moment at 12 ms WASM init + 17 ms for
+    the boolean, so it is a good trade. Left as its own task since it lands in the giant file.
+- **Large-model baseline**: `tests/perf/stl-import.perf.ts` gains a **500k-triangle** workload and a
+  first-boolean section (module load / WASM instantiate / cold / warm measured separately). 500k
+  imports in **455 ms** — ~9 ms per 10k triangles, the same rate as the 60k workload, so Block 1's
+  sanitiser costs nothing at scale. Nothing crosses the 2 s bar.
+- **The perf run caught a bug in my own morning's work.** `JSON.stringify` of a 500k-triangle scene is
+  **888 ms**, and `serializeSceneDraft` (the autosave from Block 7 task 2) stringified the draft and
+  *then* compared it to the storage quota — so a scene too big to autosave burned ~890 ms of main
+  thread on every 1.2 s debounce tick and threw the result away. It now estimates from the mesh
+  payloads (~8 chars per coordinate) and skips the serialisation entirely; a test asserts
+  `JSON.stringify` is never called for an oversized scene. Worth remembering as a pattern: **check the
+  budget before doing the expensive thing, not after**.
+- typecheck + test (439) + perf green.
+- Blocked: nothing.
+- Next: Block 4's numeric transform entry [U32], then the manifold deferral above.
+
 ## 2026-08-05 — Block 7, task 5 (assistant session log) — Block 7 complete
 - Shipped: new `lib/assistantSessionLog.ts` (12 tests) + a best-effort append in the assistant route.
   Every dock turn now writes timestamp, duration, prompt, the tool calls it executed (failures
