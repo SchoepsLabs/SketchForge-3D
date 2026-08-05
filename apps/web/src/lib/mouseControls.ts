@@ -92,8 +92,28 @@ type PointerModifiers = Pick<PointerEvent, "button" | "ctrlKey" | "metaKey" | "s
  * With no event this returns the scheme's resting bindings; with a pointerdown
  * event it applies the scheme's modifier combos for that press.
  * Plain left-drag is always reserved for selection/transform in every scheme.
+ *
+ * OrbitControls internally swaps ROTATE<->PAN on mousedown when Ctrl/Meta/Shift
+ * is held, so when modifiers are down we pre-swap the pressed button's binding
+ * to make OrbitControls' swap land on the action the scheme intends.
  */
 export function resolveMouseButtons(scheme: MouseControlScheme, event?: PointerModifiers): MouseButtonBindings {
+  const bindings = resolveIntendedMouseButtons(scheme, event);
+  if (event && (event.ctrlKey || event.metaKey || event.shiftKey)) {
+    const slot = event.button === 0 ? "LEFT" : event.button === 1 ? "MIDDLE" : event.button === 2 ? "RIGHT" : null;
+    if (slot) {
+      const action = bindings[slot];
+      if (action === MOUSE.ROTATE) {
+        bindings[slot] = MOUSE.PAN;
+      } else if (action === MOUSE.PAN) {
+        bindings[slot] = MOUSE.ROTATE;
+      }
+    }
+  }
+  return bindings;
+}
+
+function resolveIntendedMouseButtons(scheme: MouseControlScheme, event?: PointerModifiers): MouseButtonBindings {
   const ctrl = event ? event.ctrlKey || event.metaKey : false;
   const shift = event ? event.shiftKey : false;
   switch (scheme) {
