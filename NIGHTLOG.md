@@ -7,6 +7,39 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 5, task 4 (right-click context menu)
+- Shipped: `components/workplane/ContextMenu.tsx` (presentational), `lib/workplaneContextMenu.ts`
+  (entry list + enablement, 8 tests), gesture detection in `WorkplaneViewport.tsx`, and the item
+  wiring in `SketchForgeEditor.tsx`. Entries: Duplicate, Delete · Group, Ungroup, Split parts ·
+  Make hole/Make solid, Lock, Hide · Drop to workplane, Center on plate.
+- **"Never fires after an orbit-drag" is the whole task.** The right button also orbits or pans
+  (scheme-dependent), and the browser fires `contextmenu` at the *end* of that drag anyway — on
+  Windows at button-up, on macOS/Linux at button-down. Timing therefore can't be the test, so the
+  viewport records where the right button went down (`onPointerDownCapture`) and only raises the menu
+  when the pointer moved **< 5 px**, the same slack the click-to-place gesture already uses. That one
+  rule covers both platform timings. The menu also stays quiet during workplane placement, shape
+  placement, edge picking and the three ruler modes.
+- Note for anyone touching this: the canvas already has its own `contextmenu` → `preventDefault`
+  listener (so right-drag orbit doesn't pop the browser menu), added inside `createThreeState`. The
+  event still bubbles to the React host div, which is where the new handler sits — no need to modify
+  that listener.
+- Every entry reuses an existing callback (`duplicateSelected`, `deleteSelected`, `groupSelected`,
+  `ungroupSelected`, `separateSelectedParts`, `setSelectionHoleMode`, `toggleLocked`, `toggleHidden`,
+  `dropSelectedToWorkplane`, `centerSelectedOnPlate`), and enablement mirrors the toolbar's rule for
+  each — `canGroup`, `canUngroup`, `canSeparateParts` are the same expressions the toolbar props use.
+  Two deliberate exceptions: **Lock stays enabled while locked** (it is the way back out), and
+  hole/solid is one toggle showing whichever direction the selection is not already in.
+- Right-clicking an unselected shape selects it first (via the viewport's existing `pickShape`), the
+  way every other app behaves; right-clicking empty space with nothing selected opens nothing.
+- Placement gotcha handled in the component: it measures itself in `useLayoutEffect` and flips back
+  inside the window, so a right-click near the right or bottom edge doesn't open a half-off-screen
+  menu. It closes on Esc, outside pointerdown (capture phase), wheel, and window blur.
+- typecheck + test (352) green.
+- Owed: not clicked in a browser this session (same browser-selection block). The orbit-suppression
+  rule is the part that most deserves a live check — right-drag to orbit, release, and confirm no menu.
+- Blocked: nothing.
+- Next: Block 5 task 5 — Hole/Solid + Lock toggles in the toolbar's Modify group.
+
 ## 2026-08-05 — Block 5, task 3 (post-placement polish) + docs/SHORTCUTS.md
 - Audited first, as the task says, and the audit changed the job: arrow keys were **already bound** —
   arrows nudge X/Z, Ctrl+arrows raise/lower — so there was nothing to add. What was actually wrong is
