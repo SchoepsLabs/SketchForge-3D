@@ -26,6 +26,13 @@ if (process.env.SKETCHFORGE_PERF_LARGE === "1") {
   SYNTHETIC_WORKLOADS.push({ label: "synthetic-xl", triangles: 150000 });
 }
 
+// The roadmap's large-model baseline. Skipped with SKETCHFORGE_PERF_SKIP_HUGE=1
+// when a machine cannot spare the ~500 MB this workload peaks at.
+const HUGE_WORKLOAD = { label: "synthetic-500k", triangles: 500000 };
+if (process.env.SKETCHFORGE_PERF_SKIP_HUGE !== "1") {
+  SYNTHETIC_WORKLOADS.push(HUGE_WORKLOAD);
+}
+
 function formatMs(value: number) {
   return Number(value.toFixed(2));
 }
@@ -202,6 +209,40 @@ describe("STL performance benchmark", () => {
       const json = await measure(rows, label, "serialize shape JSON", 2, { triangles }, () => JSON.stringify(shape));
       await measure(rows, label, "parse shape JSON", 2, { triangles, bytes: json.length }, () => JSON.parse(json));
     }
+
+    // First boolean: the editor's group/cut path runs on manifold-3d, and the
+    // first one a user triggers pays WASM instantiation as well as the boolean
+    // itself. Both are measured separately so the baseline says which dominates.
+    const manifoldModule = await measure(rows, "boolean", "load manifold module", 1, {}, () => import("manifold-3d"));
+    const manifoldRuntime = await measure(rows, "boolean", "instantiate manifold WASM (first boolean pays this)", 1, {}, async () => {
+      const runtime = await manifoldModule.default();
+      runtime.setup();
+      return runtime;
+    });
+
+    const { Manifold } = manifoldRuntime;
+    const cutResult = await measure(rows, "boolean", "cube minus sphere (first boolean)", 1, {}, () => {
+      const solid = Manifold.cube([40, 40, 40], true);
+      const cutter = Manifold.sphere(12, 64);
+      const out = Manifold.difference(solid, cutter);
+      const triangles = out.numTri();
+      solid.delete();
+      cutter.delete();
+      out.delete();
+      return triangles;
+    });
+    expect(cutResult).toBeGreaterThan(0);
+
+    await measure(rows, "boolean", "cube minus sphere (warm)", 3, {}, () => {
+      const solid = Manifold.cube([40, 40, 40], true);
+      const cutter = Manifold.sphere(12, 64);
+      const out = Manifold.difference(solid, cutter);
+      const triangles = out.numTri();
+      solid.delete();
+      cutter.delete();
+      out.delete();
+      return triangles;
+    });
 
     printReport(rows);
   });

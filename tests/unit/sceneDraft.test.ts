@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { projectShapesFingerprint } from "@/lib/editorHistory";
 import {
   buildSceneDraft,
   decideDraftRestore,
   describeDraftAge,
+  estimateSceneDraftBytes,
+  MAX_SCENE_DRAFT_BYTES,
   parseSceneDraft,
   serializeSceneDraft,
   MAX_SCENE_DRAFT_AGE_MS,
@@ -60,6 +62,23 @@ describe("draft round trip", () => {
     const result = serializeSceneDraft(draftOf([huge]));
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe("too-large");
+  });
+
+  it("decides too-large from the estimate, without serialising first", () => {
+    // JSON.stringify of a 500k-triangle scene costs ~890 ms (tests/perf), so the
+    // quota check must not pay for a serialisation it is going to discard.
+    const huge = box({ kind: "mesh", importedMesh: { positions: new Array(400_000).fill(1.234567), baseWidth: 1, baseDepth: 1, baseHeight: 1, triangleCount: 1, sourceFormat: "stl" } } as Partial<WorkplaneShape>);
+    const draft = draftOf([huge]);
+    const spy = vi.spyOn(JSON, "stringify");
+    const result = serializeSceneDraft(draft);
+    expect(result.ok).toBe(false);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("still serialises a scene that fits", () => {
+    expect(estimateSceneDraftBytes(draftOf([box()]))).toBeLessThan(MAX_SCENE_DRAFT_BYTES);
+    expect(serializeSceneDraft(draftOf([box()])).ok).toBe(true);
   });
 
   it("rejects junk rather than restoring a broken scene", () => {
