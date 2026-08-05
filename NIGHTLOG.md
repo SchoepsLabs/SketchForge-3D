@@ -7,6 +7,36 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-04 — Live session (Cowork, not an overnight block)
+- Shipped, five commits on `lumera-custom` (d2ff033, 80d444e, 9999d09, e03165f, 5a4c9fc):
+  (1) **Mouse control scheme presets** — new `lib/mouseControls.ts` (SketchForge default, Tinkercad,
+  Fusion 360, Blender, SolidWorks, Onshape), dropdown in Workspace settings → Appearance, global
+  preference in localStorage, storage-event sync across tabs. Gotcha worth remembering: three's
+  OrbitControls internally swaps ROTATE↔PAN on mousedown when Ctrl/Meta/Shift is held
+  (OrbitControls.js ~1677/1699), so `resolveMouseButtons` pre-swaps the pressed button's binding to
+  land on the intended action — any future scheme must go through that resolver, not raw
+  `controls.mouseButtons`.
+  (2) **Workplane opacity** — `workplaneOpacity` (10–100, default 100) added to
+  `WorkplaneWorkspaceSettings`, slider in settings → Workplane, factor applied to the surface material
+  and all four grid line materials in `rebuildWorkplane`/`createGridLines`. Normalizer + tests updated.
+  (3) **Cursor-follow shape placement with face cruising** (Tinkercad-style): picking a shape arms a
+  placement mode — translucent ghost (new `ThreeState.shapePreviewLayer` + `syncShapePlacementGhost`,
+  modeled on the workplane hover preview) follows the cursor via
+  `pickPlacementSurface` → `toPlacementWorkplanePoint` → `placementPatchForNewShape`, one click
+  places (5 px movement threshold so orbit-drags never drop a shape). Shift flips to the underside,
+  Alt+click repeats, Esc cancels, pointer-leave hides. The dead `cruiseShapes` setting is now the
+  toggle; off = old instant center-of-plate add. `addShape` gained an optional workplane arg so
+  face placements commit to the cruised face, not the active placement plane.
+  (4) **Split parts in the top toolbar** (Combine group, new `ToolbarSplitIcon`) — was
+  inspector-only.
+- Verified live over the MCP bridge + editor tab; typecheck green (run from the session sandbox);
+  full `npm run ci` still owed a native run.
+- Blocked: nothing.
+- PR candidates: mouse presets + the OrbitControls modifier-swap workaround might interest upstream;
+  the rest is fork-flavoured.
+- Next: Block 5 (added to ROADMAP today) — drag-drop ghost, smart duplicate, context menu,
+  hole/lock in toolbar, icon unification, shortcut hints.
+
 ## 2026-08-02 — Block 1, task 3 (center selection on the build plate)
 - Shipped: new `lib/placeOnPlate.ts` (`placeSelectionOnPlate`, pure) + `tests/unit/placeOnPlate.test.ts`
   (14 cases), a `ToolbarCenterOnWorkplaneIcon` inline SVG, and a "Center on plate" button in the

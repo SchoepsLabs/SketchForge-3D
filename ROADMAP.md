@@ -139,6 +139,42 @@ change and no new shape kind is needed.
       baseline; update this roadmap for month 2.
       *Accept:* all green, perf numbers compared to baseline, month-2 blocks written.
 
+## Block 5 — Tinkercad parity & UI polish (added 2026-08-04 from live session)
+
+Context: the 2026-08-04 live session shipped mouse-scheme presets, workplane opacity,
+cursor-follow ghost placement with face cruising (revived `cruiseShapes`), and a Split parts
+toolbar button — see NIGHTLOG 2026-08-04. These tasks finish that arc. Research spec for the
+Tinkercad interactions (sources cited): the cruise/placement notes in that NIGHTLOG entry.
+
+- [ ] **Ghost for drag-and-drop path** — `handleDrop`/`onDragOver` currently show only the browser
+      drag image; drive the same `syncShapePlacementGhost` from `onDragOver` so drag-in and
+      click-to-place look identical, including face cruising.
+      *Accept:* dragging Box from the panel shows the translucent ghost cruising onto faces before drop.
+- [ ] **Smart duplicate (Ctrl+D transform replay)** — supersedes the Block 1 "Linear array /
+      duplicate-repeat" task; same `lib/patternShapes.ts` plan, but wire it Tinkercad-style: after a
+      duplicate, any transform applied to the copy is memorized and each further Ctrl+D re-applies it.
+      *Accept:* unit test on the pure replay fn; 5 evenly spaced copies in 5 keypresses. [C §3.1]
+- [ ] **Post-placement polish** — after ghost placement: arrow keys nudge by one snap step
+      (Ctrl+arrows for elevation, Shift for 10×) if not already bound; audit against the editor keydown
+      block first (Block 0 lesson: grep before building).
+      *Accept:* `docs/SHORTCUTS.md` (Block 1 task) documents whatever this lands.
+- [ ] **Right-click context menu** — new `components/workplane/ContextMenu.tsx`; right-click on a
+      selection (release without orbiting, <5 px movement) offers: Duplicate, Delete, Group/Ungroup,
+      Split parts, Hole/Solid toggle, Lock, Hide, Drop to workplane, Center on plate — every action the
+      toolbar has plus the inspector-only ones, one click closer.
+      *Accept:* menu never fires after an orbit-drag; every entry reuses existing editor callbacks.
+- [ ] **Hole/Solid + Lock in the toolbar** — the two most-used inspector-only toggles, surfaced in the
+      Modify group with pressed-state styling like Chamfer/Fillet.
+      *Accept:* toggling hole on a selection without opening the inspector.
+- [ ] **Icon unification pass** — toolbar mixes PNG command images, sprite crops, and inline SVG;
+      redraw the PNG/sprite stragglers as inline `currentColor` SVGs in `icons.tsx` so dark theme and
+      hover states render crisply everywhere.
+      *Accept:* no `<img>`-based toolbar icons left; dark/light theme both clean; no visual regression
+      on the sections screenshot in `docs/media/`.
+- [ ] **Toolbar shortcut hints** — append the bound key to every toolbar tooltip ("Fillet (Shift+F)"
+      style) sourced from the same table `docs/SHORTCUTS.md` is generated from, so the two never drift.
+      *Accept:* tooltip text derived from one shared constants module, not hand-typed twice.
+
 ### Deliberately out of scope this month
 - Full parametric constraint solver (rewrite; breaks the mergeability rule) — generators cover the 80%. [§3.3]
 - Desktop app [U42] — upstream defers it to post-1.0.
