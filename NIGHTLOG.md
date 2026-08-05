@@ -7,6 +7,37 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 5, task 2 (smart duplicate / Ctrl+D transform replay)
+- Shipped: new `lib/patternShapes.ts` (27 tests) + `duplicateSelected` in `SketchForgeEditor.tsx` now
+  routing through `nextDuplicateStep`. Duplicate a shape, move the copy, and every further Ctrl+D
+  repeats that move; the replay lapses the moment the selection is no longer exactly the last copies.
+  Supersedes the Block 1 "Linear array / duplicate-repeat" task, as the roadmap says.
+- **The subtle bit, and the reason the state has the shape it does:** the replayed step is the copy's
+  *total* offset from the shape it was copied from, **not** the drag the user added on top. Storing
+  only the drag looks right and spaces the parts wrong: duplicate puts the copy at +8, the user drags
+  it to 30, and repeating "the drag" (+22) gives 0 → 30 → 52 → 74 instead of 0 → 30 → 60 → 90. So the
+  replay record keeps, per copy, the placement of its *source*, and the step is measured against that.
+  There is a test that walks the whole sequence and asserts the even spacing.
+- The acceptance case is a test: five keypresses from one box give six shapes at 0/8/16/24/32/40, gaps
+  equal within 1e-6. Rotation and elevation replay too, not just translation.
+- Also landed in the same lib, because Block 2's `sketchforge_pattern_objects` and Block 3's
+  generators want them and they are the same maths: `linearPatternPlacements` and
+  `circularPatternPlacements` (count-1 copies, `count` includes the original). The circular one
+  rotates the offset the same right-handed way about **+Y** that `shape.rotation` turns the shape
+  (checked against the `THREE.MathUtils.degToRad(shape.rotation)` Euler the viewport builds), so a
+  rotated copy still faces the centre; a test pins the +90° case at (20,0) → (0,−20). A full 360°
+  sweep divides by the copy count, a partial sweep by the gaps, so the last copy lands on the arc end
+  instead of on top of the original.
+- Kept the plate clamp (`Math.min(110, …)`) for the plain duplicate only. Clamping a replayed step
+  would stack every further copy on the same spot once the chain reached the edge.
+- typecheck + test (339) green.
+- Owed: not exercised through the real keyboard this session (browser-selection block again). The pure
+  replay function is tested through the exact loop the editor runs, and the editor side is now four
+  lines of wiring.
+- Blocked: nothing.
+- Next: Block 5 task 3 — post-placement polish; audit the editor keydown block for arrow-key nudge
+  before building anything (Block 0 lesson: grep first).
+
 ## 2026-08-05 — Block 5, task 1 (ghost for the drag-and-drop path)
 - Shipped: new `lib/shapeDragPayload.ts` (8 tests) + `handleDragOver`/`clearDragGhost` in
   `WorkplaneViewport.tsx`, with the drag source in `SketchForgeEditor.tsx` registering the asset.
