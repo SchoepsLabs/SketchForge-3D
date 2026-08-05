@@ -40,6 +40,7 @@ import {
   type PlacementWorkplane,
 } from "@/lib/placementWorkplane";
 import { makeShapeFromAsset } from "@/lib/shapeCatalog";
+import { clearActiveShapeDragAsset, isShapeDragTransfer, parseShapeDragPayload, readActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
 import { regularPolygonFootprintScale } from "@/lib/regularPolygonFootprint";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings, workplaneSettingsFingerprint, workspaceHydrationSyncDecision } from "@/lib/workplaneSettings";
 import { interiorWorkplaneGridCoordinates, workplaneThemePalette, WORKPLANE_LINE_ELEVATION, WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
@@ -96,27 +97,6 @@ const RENDER_LAYER_HELPERS = 2;
 const RENDER_LAYER_MODIFIERS = 3;
 const RENDER_LAYER_PREVIEWS = 4;
 const BVH_PICKING_TRIANGLE_THRESHOLD = 512;
-const SHAPE_KINDS = new Set<ShapeAsset["kind"]>([
-  "box",
-  "cylinder",
-  "sphere",
-  "sketch",
-  "scribble",
-  "cone",
-  "pyramid",
-  "roof",
-  "text",
-  "roundRoof",
-  "halfSphere",
-  "torus",
-  "tube",
-  "gear",
-  "ring",
-  "wedge",
-  "polygon",
-  "icosahedron",
-  "mesh",
-]);
 const fontLoader = new FontLoader();
 const textFonts: Record<string, Font> = {
   Multilanguage: fontLoader.parse(helvetikerBoldFontJson as FontData),
@@ -144,36 +124,6 @@ const imageTextureLoader = new THREE.TextureLoader();
 const IMPORTED_SELECTED_EDGE_TRIANGLE_LIMIT = 40000;
 const NORMAL_IMPORTED_SELECTION_EDGE_ANGLE = 60;
 const MODIFIER_EDGE_PICK_RADIUS_PX = 14;
-
-function parseDroppedShapeAsset(raw: string): ShapeAsset | null {
-  try {
-    const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") {
-      return null;
-    }
-    const asset = value as Partial<ShapeAsset>;
-    if (
-      typeof asset.id !== "string" ||
-      typeof asset.name !== "string" ||
-      typeof asset.src !== "string" ||
-      typeof asset.color !== "string" ||
-      !SHAPE_KINDS.has(asset.kind as ShapeAsset["kind"]) ||
-      (asset.hole !== undefined && typeof asset.hole !== "boolean")
-    ) {
-      return null;
-    }
-    return {
-      id: asset.id,
-      name: asset.name,
-      src: asset.src,
-      kind: asset.kind as ShapeAsset["kind"],
-      color: asset.color,
-      hole: asset.hole,
-    };
-  } catch {
-    return null;
-  }
-}
 
 type WorkplaneViewportProps = {
   shapes: WorkplaneShape[];
@@ -2318,6 +2268,10 @@ export function WorkplaneViewport({
   const pendingShapeBaseRef = useRef<WorkplaneShape | null>(null);
   const pendingPlacementRef = useRef<{ point: PlacementPoint; workplane: PlacementWorkplane } | null>(null);
   const placementPressRef = useRef<{ x: number; y: number } | null>(null);
+  // Drag-and-drop ghost: the built base shape is cached per drag (makeShapeFromAsset
+  // builds text/gear geometry, too heavy to redo on every dragover tick).
+  const dragGhostRef = useRef<{ assetId: string; base: WorkplaneShape } | null>(null);
+  const dragPlacementRef = useRef<{ point: PlacementPoint; workplane: PlacementWorkplane } | null>(null);
 
   useEffect(() => {
     pendingShapeAssetRef.current = pendingShapeAsset;
@@ -4563,23 +4517,77 @@ export function WorkplaneViewport({
     [clearMoveDimensions, onAddShape, onInteractionActiveChange, onPendingShapeChange, onSelectShape, onUpdateShape, pickPlacementSurface, rememberResizeAnchor, setMarqueeFromState, shapesInMarquee, suppressLiftEditAfterDrag, toPlacementWorkplanePoint],
   );
 
+  const clearDragGhost = useCallback(() => {
+    dragGhostRef.current = null;
+    dragPlacementRef.current = null;
+    syncShapePlacementGhost(threeRef.current, null);
+  }, []);
+
+  /**
+   * Ghost for the drag-and-drop path, so dragging a shape in from the panel
+   * looks like click-to-place, face cruising included.
+   *
+   * The asset comes from the module-level drag register rather than the event:
+   * `dataTransfer.getData()` is blocked during dragover, only `types` is
+   * readable there. Gated on the same `cruiseShapes` setting as click-to-place,
+   * so turning ghosts off restores the previous drop-at-cursor behaviour exactly.
+   */
+  const handleDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      if (
+        rulerMoveModeRef.current ||
+        workplaneModeRef.current ||
+        // Click-to-place already owns the ghost; do not fight it.
+        pendingShapeAssetRef.current ||
+        !workspaceRef.current.cruiseShapes ||
+        !isShapeDragTransfer(event.dataTransfer.types)
+      ) {
+        return;
+      }
+
+      const asset = readActiveShapeDragAsset();
+      if (!asset) return;
+
+      const cached = dragGhostRef.current;
+      const base = cached?.assetId === asset.id ? cached.base : makeShapeFromAsset(asset);
+      if (cached?.assetId !== asset.id) {
+        dragGhostRef.current = { assetId: asset.id, base };
+      }
+
+      const surface = pickPlacementSurface(event.clientX, event.clientY, event.shiftKey);
+      const workplane = surface?.workplane ?? placementWorkplaneRef.current;
+      const point = toPlacementWorkplanePoint(event.clientX, event.clientY, workplane);
+      if (!point) return;
+      dragPlacementRef.current = { point, workplane };
+      syncShapePlacementGhost(threeRef.current, { ...base, ...placementPatchForNewShape(base, workplane, point) });
+    },
+    [pickPlacementSurface, toPlacementWorkplanePoint],
+  );
+
   const handleDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
+      const cruised = dragPlacementRef.current;
+      clearDragGhost();
       if (rulerMoveModeRef.current) return;
-      const raw = event.dataTransfer.getData("application/x-sketchforge-shape");
+      const raw = event.dataTransfer.getData(SHAPE_DRAG_MIME);
       if (!raw) {
         return;
       }
 
-      const asset = parseDroppedShapeAsset(raw);
+      const asset = parseShapeDragPayload(raw);
       if (!asset) {
         return;
       }
-      const point = toPlacementWorkplanePoint(event.clientX, event.clientY);
-      onAddShape(asset, point ?? placementWorkplaneRef.current.origin);
+      // Commit to the face the ghost was cruising, the way a click placement
+      // does; fall back to the flat pick when there was no ghost.
+      const workplane = cruised?.workplane;
+      const point = toPlacementWorkplanePoint(event.clientX, event.clientY, workplane) ?? cruised?.point;
+      onAddShape(asset, point ?? placementWorkplaneRef.current.origin, workplane);
     },
-    [onAddShape, toPlacementWorkplanePoint],
+    [clearDragGhost, onAddShape, toPlacementWorkplanePoint],
   );
 
   const resetView = useCallback(() => {
@@ -4859,6 +4867,17 @@ export function WorkplaneViewport({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onPendingShapeChange, onWorkplaneModeChange, resetView, rulerToolsOpen, setPlacementWorkplaneAtSelection, setRulerActive, togglePlacementWorkplane, toggleProjection, zoomCamera]);
 
+  // A drag released outside the viewport (or pressed Esc) fires dragend on the
+  // source and no drop here, so the ghost has to be cleared from the document.
+  useEffect(() => {
+    const handleDragEnd = () => {
+      clearActiveShapeDragAsset();
+      clearDragGhost();
+    };
+    window.addEventListener("dragend", handleDragEnd);
+    return () => window.removeEventListener("dragend", handleDragEnd);
+  }, [clearDragGhost]);
+
   return (
     <main className="workplane-stage">
       <div className="view-cube" aria-label="View orientation cube" onPointerDown={(event) => event.stopPropagation()}>
@@ -4936,10 +4955,8 @@ export function WorkplaneViewport({
           <div
             className="three-workplane-host"
             ref={hostRef}
-            onDragOver={(event) => {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "copy";
-            }}
+            onDragOver={handleDragOver}
+            onDragLeave={clearDragGhost}
             onDrop={handleDrop}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}

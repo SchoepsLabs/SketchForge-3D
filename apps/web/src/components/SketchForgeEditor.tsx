@@ -109,6 +109,7 @@ import {
 } from "@/lib/placementWorkplane";
 import { placeSketchExtrusion } from "@/lib/sketchPlacement";
 import { readMcpEditorIdentity } from "@/lib/mcpEditorIdentity";
+import { clearActiveShapeDragAsset, serializeShapeDragAsset, setActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
 import {
   SKETCHFORGE_MCP_POLL_MS,
   SKETCHFORGE_MCP_ROUTE,
@@ -9455,8 +9456,12 @@ function SecondaryToolbar({
                     }}
                     onDragStart={(event) => {
                       event.dataTransfer.effectAllowed = "copy";
-                      event.dataTransfer.setData("application/x-sketchforge-shape", JSON.stringify(shape));
+                      event.dataTransfer.setData(SHAPE_DRAG_MIME, serializeShapeDragAsset(shape));
+                      // dataTransfer is unreadable during dragover, so park the
+                      // asset where the viewport's ghost can reach it.
+                      setActiveShapeDragAsset(shape);
                     }}
+                    onDragEnd={() => clearActiveShapeDragAsset()}
                   >
                     <img src={shape.menuIcon} alt="" draggable={false} />
                     <span>{shape.name}</span>
