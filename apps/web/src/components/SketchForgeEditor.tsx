@@ -5292,7 +5292,7 @@ export function SketchForgeEditor({
   initialPlacementWorkplane?: PlacementWorkplane;
   onHome?: () => void;
   onOpenSkfProjectFile?: (file: File) => Promise<{ ok: boolean; message: string } | void> | { ok: boolean; message: string } | void;
-  onSaveSharedProject?: (request: { exportName: string; bytes: Uint8Array; overwriteRevision?: string | null }) => Promise<string>;
+  onSaveSharedProject?: (request: { exportName: string; bytes: Uint8Array; overwriteRevision?: string | null; createProjectName?: string | null }) => Promise<string>;
   onProjectShapesChange?: (snapshot: {
     projectId: string;
     shapes: WorkplaneShape[];
@@ -8243,13 +8243,21 @@ export function SketchForgeEditor({
 
       if (command.action === "save_project") {
         if (!onSaveSharedProject) throw new Error("Shared project storage is not available in this deployment");
-        const requestedName = mcpString(params.name, "").trim() || projectInfoRef.current.projectName;
+        const explicitName = mcpString(params.name, "").trim();
+        const scratchScene = !projectInfoRef.current.projectId;
+        // A scratch scene has no real name to fall back to — "SketchForge design"
+        // would leak into the shared library and the print outbox.
+        if (scratchScene && !explicitName) {
+          throw new Error('This scene is not a saved project yet. Call again with name: "<project name>" and it will be created locally and shared under that name.');
+        }
+        const requestedName = explicitName || projectInfoRef.current.projectName;
         const overwrite = params.overwrite === true;
         const bytes = await packageSkfBytes(requestedName);
+        const createProjectName = scratchScene ? requestedName : undefined;
         try {
-          const message = await onSaveSharedProject({ exportName: requestedName, bytes });
+          const message = await onSaveSharedProject({ exportName: requestedName, bytes, createProjectName });
           setNotice(message);
-          return { saved: true, name: requestedName, overwritten: false, message };
+          return { saved: true, name: requestedName, overwritten: false, createdProject: scratchScene, message };
         } catch (error) {
           // Overwriting is the user's call: without an explicit overwrite:true
           // the assistant is told to ask rather than silently replacing a part.
@@ -8257,9 +8265,12 @@ export function SketchForgeEditor({
             if (!overwrite) {
               throw new Error(`A shared part named "${requestedName}" already exists. Ask the user, then call again with overwrite: true, or pick another name.`);
             }
-            const message = await onSaveSharedProject({ exportName: requestedName, bytes, overwriteRevision: error.failure.currentRevision });
+            // The first attempt already created and adopted the local project on
+            // a scratch scene; the retry finds it through the parent's refs and
+            // will not create twice.
+            const message = await onSaveSharedProject({ exportName: requestedName, bytes, overwriteRevision: error.failure.currentRevision, createProjectName });
             setNotice(message);
-            return { saved: true, name: requestedName, overwritten: true, message };
+            return { saved: true, name: requestedName, overwritten: true, createdProject: scratchScene, message };
           }
           throw error;
         }

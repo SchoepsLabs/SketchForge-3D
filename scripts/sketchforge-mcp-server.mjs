@@ -243,12 +243,12 @@ const tools = [
   },
   {
     name: "sketchforge_save_project",
-    description: "Save the current SketchForge project into the shared parts library as a .skf file. Creates a new file by default; pass overwrite:true only when the user asked to replace an existing part.",
+    description: "Save the current SketchForge project into the shared parts library as a .skf file. On an unsaved scratch scene this also creates the local project, so `name` is required there. Creates a new shared file by default; pass overwrite:true only when the user asked to replace an existing part.",
     inputSchema: {
       ...editorTargetSchema,
       properties: {
         ...editorTargetSchema.properties,
-        name: { type: "string", description: "File name to save as, without the .skf extension. Defaults to the current project name." },
+        name: { type: "string", description: "Project/file name, without the .skf extension. Defaults to the current project name; REQUIRED when the scene has never been saved as a project." },
         overwrite: { type: "boolean", description: "Replace an existing shared part with the same name. Ask the user before setting this." },
       },
     },

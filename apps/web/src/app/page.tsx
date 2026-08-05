@@ -950,8 +950,47 @@ export default function Home() {
     }
   }, [openSkfProjectFromFile]);
 
-  const saveActiveProjectToShared = useCallback(async ({ exportName, bytes, overwriteRevision }: { exportName: string; bytes: Uint8Array; overwriteRevision?: string | null }) => {
-    const activeProject = projects.find((project) => project.id === activeProjectId);
+  // Read through refs so a second call in the same async continuation (the
+  // overwrite retry) sees a project created moments ago by the first call,
+  // which the useCallback closure would not.
+  const projectsRef = useRef(projects);
+  projectsRef.current = projects;
+  const activeProjectIdRef = useRef(activeProjectId);
+  activeProjectIdRef.current = activeProjectId;
+
+  const saveActiveProjectToShared = useCallback(async ({ exportName, bytes, overwriteRevision, createProjectName }: { exportName: string; bytes: Uint8Array; overwriteRevision?: string | null; createProjectName?: string | null }) => {
+    let activeProject = projectsRef.current.find((project) => project.id === activeProjectIdRef.current);
+    if (!activeProject && createProjectName?.trim()) {
+      // Scratch scene: create the local project from the .skf bytes we were
+      // handed, then run the normal share flow against it. The seeded storage
+      // entry matches the live scene exactly, so the editor's project-change
+      // hydration is content-identical and nothing is wiped; adopting the new
+      // projectId also fixes send_to_print naming.
+      const restored = await importSkfProject(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+      const now = Date.now();
+      const project: DashboardProject = {
+        ...newProject(createProjectName.trim(), projectsRef.current.length, restored.shapes.length),
+        createdAt: restored.createdAt,
+        updatedAt: now,
+        revision: now,
+        workspace: restored.workspace,
+        snapGrid: restored.snapGrid,
+        placementElevation: restored.placementElevation,
+        placementWorkplane: restored.placementWorkplane,
+        sketchPlacementWorkplane: restored.sketchPlacementWorkplane,
+      };
+      const entry = projectShapeCacheEntry(now, restored.shapes, restored.history, restored.historyIndex, restored.assets);
+      await saveProjectShapes(project.id, entry, projectShapeSaveContext(project));
+      setProjectShapesById((current) => ({ ...current, [project.id]: entry }));
+      setProjects((current) => [project, ...current]);
+      setActiveProjectId(project.id);
+      projectsRef.current = [project, ...projectsRef.current];
+      activeProjectIdRef.current = project.id;
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", `/?editor=1&project=${encodeURIComponent(project.id)}`);
+      }
+      activeProject = project;
+    }
     if (!activeProject) throw new Error("Open a local project before saving it to the shared space");
     const normalizedExportName = exportName.trim() || activeProject.name;
     const saveBackToSource = Boolean(activeProject.sharedProject && normalizedExportName === activeProject.name);
@@ -979,7 +1018,7 @@ export default function Home() {
       : project));
     await refreshSharedProjects();
     return `Saved ${savedProject.name} to the Docker shared project space`;
-  }, [activeProjectId, projects, refreshSharedProjects]);
+  }, [refreshSharedProjects]);
 
   const importFilesFromDashboard = useCallback(
     async (files: File[]) => {
