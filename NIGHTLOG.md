@@ -7,6 +7,34 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 7, task 4 (print handoff)
+- Shipped: new `lib/printOutbox.ts` + `app/api/print-outbox/route.ts` (14 tests), a "Send to print"
+  toolbar button in the Arrange group with a new inline SVG icon, and `sketchforge_send_to_print`
+  over MCP. Scene, or the selection when there is one; holes are excluded like every other export.
+- Outbox location: `SKETCHFORGE_PRINT_OUTBOX_DIR`, defaulting to `<shared parts library>/outbox/` so
+  the existing Docker mount covers both. Unconfigured returns an actionable message naming both
+  variables rather than inventing a folder.
+- Two things a **folder watcher** cares about, both tested: (a) the STL is written to a temp name and
+  then renamed — rename is atomic, so Bambu Studio can never pick up a half-written file and start
+  slicing it; (b) a second send of the same part on the same day becomes `-2`, because clobbering the
+  first print or failing the second are both worse than naming it. The route also rebuilds the file
+  name from `path.basename` + sanitiser, so `?fileName=../../escape.stl` cannot leave the outbox
+  (there is a test for that).
+- Verified live against the running dev server with the outbox pointed at a scratch dir: two sends
+  produced `SketchForge design-2026-08-05.stl` and `SketchForge design-2026-08-05-2.stl`, 113 bytes
+  each, no `.tmp` left behind.
+- **Not** verified end-to-end from the dock, and the reason is worth writing down: `send it to print`
+  in the dock returned *"Unknown MCP command: send_to_print"*. That is not a bug — the open editor tab
+  was still running the JS bundle it loaded **before** I restarted the dev server (I had to restart it
+  to inject the outbox env var), and a tab keeps its old bundle until it reloads. The MCP bridge
+  reconnects across a server restart, so the tab *looks* healthy while its command handler table is
+  stale. Lesson for future live checks: **after restarting the dev server, the editor tab must be
+  reloaded before testing any newly added MCP command** — the heartbeat reconnecting is not evidence
+  the tab has the new code.
+- typecheck + test (414) green.
+- Blocked: nothing (the dock round-trip needs a tab reload, which needs the browser).
+- Next: Block 7 task 5 — assistant session log.
+
 ## 2026-08-05 — Block 7, task 3 (save-to-shared flow + dock save tool)
 - Shipped: new `lib/sharedProjectSave.ts` (13 tests), named conflict reasons in
   `api/shared-projects/route.ts`, an overwrite confirm bar in the editor, and
