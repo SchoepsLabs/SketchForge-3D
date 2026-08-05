@@ -193,6 +193,26 @@ export function ToolbarDropToWorkplaneIcon() {
   return <ToolbarCommandImage file="toolbar-drop-workplane.png" className="toolbar-user-art-icon" />;
 }
 
+export function ToolbarHoleIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <rect x="8" y="10" width="32" height="28" rx="3" fill="none" stroke="currentColor" strokeWidth="2.4" />
+      <ellipse cx="24" cy="24" rx="8.5" ry="8.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeDasharray="3.4 2.8" />
+      <path d="M18 30 30 18" fill="none" stroke="currentColor" strokeWidth="1.8" opacity="0.7" />
+    </svg>
+  );
+}
+
+export function ToolbarLockIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <rect x="12" y="21" width="24" height="18" rx="3" fill="none" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M17 21v-5a7 7 0 0 1 14 0v5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="24" cy="30" r="2.6" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function ToolbarCenterOnWorkplaneIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>

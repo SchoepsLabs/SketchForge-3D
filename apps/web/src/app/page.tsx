@@ -1235,8 +1235,8 @@ function EditorLoadingSkeleton() {
   ];
   const rightToolbarSections = [
     { className: "visibility", controls: 2 },
-    { className: "combine", controls: 3 },
-    { className: "modify", controls: 5 },
+    { className: "combine", controls: 4 },
+    { className: "modify", controls: 7 },
     { className: "arrange", controls: 2 },
     { className: "manage", controls: 3 },
   ];

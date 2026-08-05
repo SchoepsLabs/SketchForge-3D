@@ -27,6 +27,8 @@ import {
   ToolbarCaretDownIcon,
   ToolbarCopyIcon,
   ToolbarDuplicateIcon,
+  ToolbarHoleIcon,
+  ToolbarLockIcon,
   ToolbarCenterOnWorkplaneIcon,
   ToolbarDropToWorkplaneIcon,
   ToolbarExportIcon,
@@ -5766,6 +5768,10 @@ export function SketchForgeEditor({
   const selectedEdgeFeatureCount = useMemo(() => selectedShape ? edgeTreatmentFeatureCount(selectedShape) : 0, [selectedShape]);
   const selectedReversibleEdgeFeatureCount = useMemo(() => selectedShape ? reversibleEdgeTreatmentCount(selectedShape) : 0, [selectedShape]);
   const selectedEdgeHistoryOptions = useMemo(() => selectedShape ? edgeTreatmentHistoryOptions(selectedShape) : [], [selectedShape]);
+  // Toolbar mirror of the two inspector toggles: "all of the selection", so a
+  // mixed selection reads as solid/unlocked and the button turns it all one way.
+  const selectionIsHole = selectedShapes.length > 0 && selectedShapes.every((shape) => Boolean(shape.hole));
+  const selectionLocked = selectedShapes.length > 0 && selectedShapes.every((shape) => shape.locked);
   const canSeparateSelectedParts = useMemo(
     () => selectedShapes.length === 1 && Boolean(selectedShape && separablePartCount(selectedShape) > 1),
     [selectedShape, selectedShapes.length],
@@ -8962,6 +8968,11 @@ export function SketchForgeEditor({
         onDelete={deleteSelected}
         onDuplicate={duplicateSelected}
         onDropToWorkplane={dropSelectedToWorkplane}
+        onToggleHole={() => setSelectionHoleMode(!selectionIsHole)}
+        onToggleLock={toggleLocked}
+        selectionIsHole={selectionIsHole}
+        selectionLocked={selectionLocked}
+        canToggleHole={hasSelection && selectedShapes.every((shape) => !shape.locked)}
         onCenterOnPlate={centerSelectedOnPlate}
         onGroup={groupSelected}
         onIntersect={intersectSelected}
@@ -9269,6 +9280,11 @@ function SecondaryToolbar({
   onDelete,
   onDuplicate,
   onDropToWorkplane,
+  onToggleHole,
+  onToggleLock,
+  selectionIsHole,
+  selectionLocked,
+  canToggleHole,
   onCenterOnPlate,
   onGroup,
   onIntersect,
@@ -9323,6 +9339,11 @@ function SecondaryToolbar({
   onDelete: () => void;
   onDuplicate: () => void;
   onDropToWorkplane: () => void;
+  onToggleHole: () => void;
+  onToggleLock: () => void;
+  selectionIsHole: boolean;
+  selectionLocked: boolean;
+  canToggleHole: boolean;
   onCenterOnPlate: () => void;
   onGroup: () => void;
   onIntersect: () => void;
@@ -9456,6 +9477,8 @@ function SecondaryToolbar({
     { label: "Snap to grid", icon: ToolbarSnapGridIcon, action: onSnap, enabled: hasSelection },
     { label: "Chamfer", icon: ToolbarChamferIcon, action: onChamfer, enabled: canEdgeModify, active: edgeModifierKind === "chamfer" },
     { label: "Fillet", icon: ToolbarFilletIcon, action: onFillet, enabled: canEdgeModify, active: edgeModifierKind === "fillet" },
+    { label: selectionIsHole ? "Make solid" : "Make hole", icon: ToolbarHoleIcon, action: onToggleHole, enabled: canToggleHole, active: selectionIsHole },
+    { label: selectionLocked ? "Unlock" : "Lock", icon: ToolbarLockIcon, action: onToggleLock, enabled: hasSelection, active: selectionLocked },
   ];
   const arrangeTools = [
     { label: "Drop to workplane", icon: ToolbarDropToWorkplaneIcon, action: onDropToWorkplane, enabled: hasSelection },
