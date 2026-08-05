@@ -7,6 +7,22 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Live session (Cowork): Block 7 acceptance + autosave fix
+- Ran the browser-side acceptance the 3-hour block couldn't: fresh bundle loaded, Resume bar
+  verified end-to-end. Found and fixed a real hole: **the autosave loop overwrote the stored
+  draft with the current (empty) scene while the Resume offer sat unanswered** — the 1.2 s
+  debounce fired before any human can click, so a second crash/reload lost the draft for good
+  (observed live: stored draft went from 1 shape to 0 while the bar was showing).
+  Fix in SceneDraftGuard: autosave is suspended while an offer is pending; resumes on Resume
+  (writes the restored scene) or Discard (deliberate removal). Verified with the double-crash
+  sequence: create shape → reload → leave bar unanswered 5 s → draft still holds the shape →
+  reload again → bar still offers → Resume → scene restored, "Resumed autosaved scene (1 object)".
+- Restore path itself was fine — earlier "Resume did nothing" reproductions were automation
+  clicks missing the button, confirmed by a DOM-dispatched click working. Lesson for future
+  browser QA: verify a click landed (bar dismissed) before concluding the handler is broken.
+- Still owed from this side: dock "save the project as <name>" and "send it to print"
+  acceptance (next), and the reserved icon pass.
+
 ## 2026-08-05 — Session summary (Block 7 complete, Block 1 cleared, Block 4 started)
 - **Shipped, 20 commits on `lumera-custom`, all pushed.** Block 7 (all five tasks), all three Block 1
   leftovers, the tested core of Block 4's numeric transform entry, and a drift guard for the MCP

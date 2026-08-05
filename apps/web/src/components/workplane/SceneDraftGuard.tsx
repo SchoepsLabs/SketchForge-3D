@@ -67,8 +67,13 @@ export function SceneDraftGuard({ shapes, selectedIds, projectId, projectName, r
   }, [ready]);
 
   // Autosave, debounced so a drag that commits many times writes once.
+  // Suspended while a restore offer is pending: the editor came up empty (or
+  // different), and writing THAT over the stored draft would destroy the very
+  // scene the bar is offering back — a second crash before the user answers
+  // would then lose the work for good. Autosave resumes on Resume (writing the
+  // restored scene) or Discard (draft removed deliberately).
   useEffect(() => {
-    if (!ready || !checkedRef.current) return;
+    if (!ready || !checkedRef.current || offer) return;
     const timer = window.setTimeout(() => {
       const draft = buildSceneDraft({ shapes, selectedIds, projectId, projectName, now: Date.now() });
       const serialized = serializeSceneDraft(draft);
@@ -90,7 +95,7 @@ export function SceneDraftGuard({ shapes, selectedIds, projectId, projectName, r
       }
     }, SAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [projectId, projectName, ready, selectedIds, shapes]);
+  }, [offer, projectId, projectName, ready, selectedIds, shapes]);
 
   const resume = useCallback(() => {
     if (!offer) return;
