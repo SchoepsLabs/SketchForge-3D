@@ -8104,14 +8104,39 @@ export function SketchForgeEditor({
 
     heartbeat();
     void poll();
-    const heartbeatTimer = window.setInterval(heartbeat, 1000);
-    const pollTimer = window.setInterval(() => void poll(), SKETCHFORGE_MCP_POLL_MS);
+    // Chrome throttles main-thread timers in hidden/minimized tabs to ~1/min,
+    // which outlives SKETCHFORGE_MCP_STALE_MS and drops the editor from the
+    // bridge. Dedicated-worker timers are not visibility-throttled, so drive
+    // the heartbeat/poll ticks from an inline worker and keep the main-thread
+    // intervals only as a fallback when workers are unavailable.
+    let tickWorker: Worker | null = null;
+    let tickWorkerUrl: string | null = null;
+    try {
+      tickWorkerUrl = URL.createObjectURL(
+        new Blob(
+          [`setInterval(() => postMessage("hb"), 1000); setInterval(() => postMessage("poll"), ${SKETCHFORGE_MCP_POLL_MS});`],
+          { type: "text/javascript" },
+        ),
+      );
+      tickWorker = new Worker(tickWorkerUrl);
+      tickWorker.onmessage = (event: MessageEvent<string>) => {
+        if (stopped) return;
+        if (event.data === "hb") heartbeat();
+        else if (event.data === "poll") void poll();
+      };
+    } catch {
+      tickWorker = null;
+    }
+    const heartbeatTimer = tickWorker ? null : window.setInterval(heartbeat, 1000);
+    const pollTimer = tickWorker ? null : window.setInterval(() => void poll(), SKETCHFORGE_MCP_POLL_MS);
     window.addEventListener("focus", heartbeat);
     document.addEventListener("visibilitychange", heartbeat);
     return () => {
       stopped = true;
-      window.clearInterval(heartbeatTimer);
-      window.clearInterval(pollTimer);
+      tickWorker?.terminate();
+      if (tickWorkerUrl) URL.revokeObjectURL(tickWorkerUrl);
+      if (heartbeatTimer !== null) window.clearInterval(heartbeatTimer);
+      if (pollTimer !== null) window.clearInterval(pollTimer);
       window.removeEventListener("focus", heartbeat);
       document.removeEventListener("visibilitychange", heartbeat);
     };

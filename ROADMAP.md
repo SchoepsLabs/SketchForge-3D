@@ -174,14 +174,12 @@ Tinkercad interactions (sources cited): the cruise/placement notes in that NIGHT
 - [ ] **Toolbar shortcut hints** — append the bound key to every toolbar tooltip ("Fillet (Shift+F)"
       style) sourced from the same table `docs/SHORTCUTS.md` is generated from, so the two never drift.
       *Accept:* tooltip text derived from one shared constants module, not hand-typed twice.
-- [ ] **Background-tab-proof MCP heartbeat** — Chrome throttles/pauses timers in hidden tabs, so the
-      editor's bridge heartbeat dies whenever the window is minimized and MCP calls fail with
-      "no open editor" (hit live 2026-08-04 pushing a mesh in). Move the heartbeat off
-      rAF/setTimeout onto a Web Worker or `setInterval` + `document.visibilityState` re-sync, and/or
-      widen the server's staleness window with a distinct "tab hidden" state surfaced in
-      `list_editors`.
-      *Accept:* with the editor tab hidden for 5+ minutes, `sketchforge_import_mesh` still lands and
-      the shape is there when the tab is shown again.
+- [x] **Background-tab-proof MCP heartbeat** — Chrome throttles main-thread timers in hidden tabs to
+      ~1/min, outliving `SKETCHFORGE_MCP_STALE_MS` (6.5 s), so the bridge dropped the editor whenever
+      the window was minimized (hit live 2026-08-04 pushing a mesh in). Fixed same night: heartbeat +
+      poll ticks now come from an inline dedicated Web Worker (worker timers are not
+      visibility-throttled), main-thread intervals kept only as fallback.
+      *Verified:* editor hidden, heartbeating 20 s+, `sketchforge_import_mesh` landed a 384-tri mesh.
 
 ## Block 6 — In-editor Claude chat dock (added 2026-08-04, Marty's ask: design without alt-tabbing)
 
