@@ -190,7 +190,7 @@ and no per-token billing**. The spawned Claude gets scene tools via the repo's o
 bridge already uses — nothing hand-written twice. Direct Anthropic-API mode stays as an optional
 fallback if `ANTHROPIC_API_KEY` is ever set.
 
-- [ ] **Assistant backend route** — new `app/api/assistant/route.ts`: spawns
+- [x] **Assistant backend route** — new `app/api/assistant/route.ts`: spawns
       `claude -p --output-format stream-json --mcp-config <sketchforge server> --allowedTools "mcp__sketchforge__*"`
       with the user message, streams stdout deltas to the client, `--resume <sessionId>` for
       conversation continuity across dock messages. Detect a missing `claude` binary and return an
@@ -199,24 +199,24 @@ fallback if `ANTHROPIC_API_KEY` is ever set.
       Messages API with the same streamed shape.
       *Accept:* dock replies stream on a machine with only Claude Code installed — no key anywhere;
       follow-up messages keep context via --resume.
-- [ ] **Chat dock panel** — new `components/assistant/AssistantDock.tsx`, right-side collapsible
+- [x] **Chat dock panel** — new `components/assistant/AssistantDock.tsx`, right-side collapsible
       dock (like the inspector), message list + input, streaming render, busy state while the CLI
       turn runs. Keyboard: Enter sends, Shift+Enter newline, Esc collapses.
       *Accept:* dock never overlaps the inspector; collapsed state persists in localStorage.
-- [ ] **Tool round-trip through the bridge** — the spawned CLI acts on the scene via the
+- [x] **Tool round-trip through the bridge** — the spawned CLI acts on the scene via the
       sketchforge MCP server, which talks to the dev server's existing command queue — so the dock's
       Claude edits the same live editor the user is looking at. Surface each executed tool call as a
       one-line entry in the transcript (parse stream-json tool_use events).
       *Accept:* "add a 20mm box at the origin and fillet the top edges" typed in the dock lands in
       the visible scene, with the tool calls listed in the transcript.
-- [ ] **Iteration checkpoints + version selector** (Marty's ask) — snapshot the shape state before
+- [x] **Iteration checkpoints + version selector** (Marty's ask) — snapshot the shape state before
       each assistant edit batch (reuse `editorHistory` snapshots; tag them `assistant#N` with the
       prompt text). Dock header gets a version dropdown listing iterations; picking one restores that
       snapshot (a restore is itself undoable). This gives "try it again from iteration 3" without
       touching manual undo.
       *Accept:* three assistant edits → dropdown shows v1/v2/v3 + current; restoring v1 then undoing
       returns to v3's state; manual edits between iterations survive in the history chain.
-- [ ] **Session context** — system prompt includes scene summary (shape list w/ dimensions, active
+- [x] **Session context** — system prompt includes scene summary (shape list w/ dimensions, active
       workplane, snap grid, units) rebuilt per request, so the assistant sees what's on the plate
       without a read tool round-trip. Token-guard: summarize past 20 shapes.
       *Accept:* "make the cylinder as tall as the box" resolves without the model asking which cylinder.

@@ -7,6 +7,31 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 6, task 5 (session context) — Block 6 complete
+- Shipped: `lib/assistantSceneContext.ts` (pure, 12 tests) + one more dock prop wired straight to the
+  editor's existing `mcpSceneSnapshot`, so the summary is rebuilt from live state on **every**
+  message — a resumed CLI session never reasons about the scene as it was three turns ago.
+- Each object is one line: name, kind, id, size, position, then only the flags that change what an
+  edit may do (hole, locked, hidden, group size, triangle count, edge-feature count, non-zero
+  rotations). The selection is named at the end so "move it 10 mm" has a referent. Token guard:
+  20 objects listed, then a pointer to `sketchforge_list_objects` for the rest.
+- **The bug that only a live scene could have shown.** Built against a fixture the summary looked
+  fine; run against the real editor it printed `Workplane 200 × 200 Metric (Default)` and
+  `units Metric (Default) at 1:1 (millimeters)`. `workspace.units` / `workspace.scale` are *UI preset
+  labels*, not unit symbols — the real display unit comes from `lengthDisplayUnit(workspace)` in
+  `measurementUnits.ts` (mm/cm/m/in/ft/stud). And the distinction matters twice over: the MCP tools
+  and every stored dimension are **millimetres regardless of the display unit**, so the summary now
+  says exactly that, and only mentions a conversion (`1 in = 25.4 mm`) when the user's workspace shows
+  something other than mm. There is a test named for the preset-label case.
+- Verified live, the roadmap's own acceptance sentence: with a 20 × 20 × 25 box and a 10 × 10 × 8
+  cylinder on the plate, "Make the cylinder as tall as the box." produced a single
+  `update_object(height: 25)` — **no `read_scene`, no `list_objects`** — and the reply named the
+  dimensions it left alone. Both test objects were deleted afterwards, plate back to empty.
+- typecheck + test (305) green.
+- Blocked: nothing. **Block 6 is complete** (all five tasks).
+- Next: Block 5 — drag-and-drop ghost, smart duplicate (Ctrl+D transform replay), post-placement
+  nudge audit, right-click context menu, hole/lock in the toolbar, icon unification, shortcut hints.
+
 ## 2026-08-05 — Block 6, task 4 (iteration checkpoints + version selector)
 - Shipped: `lib/assistantCheckpoints.ts` (pure, 13 tests), a version `<select>` in the dock header,
   and two callbacks in `SketchForgeEditor.tsx` — `readShapesForAssistant` (returns `shapesRef.current`)
