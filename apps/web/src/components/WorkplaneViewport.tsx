@@ -29,6 +29,7 @@ import { parseMeasurementInput } from "@/lib/measurementUnits";
 import { createMoveDimensionOverlay, type MoveDimensionAxis, type MoveDimensionOverlayData } from "@/lib/moveDimensionLines";
 import {
   horizontalPlacementWorkplane,
+  placementPatchForNewShape,
   placementWorkplaneCoordinates,
   placementWorkplaneFromSurface,
   placementWorkplaneIsBase,
@@ -38,6 +39,7 @@ import {
   type PlacementPoint,
   type PlacementWorkplane,
 } from "@/lib/placementWorkplane";
+import { makeShapeFromAsset } from "@/lib/shapeCatalog";
 import { regularPolygonFootprintScale } from "@/lib/regularPolygonFootprint";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings, workplaneSettingsFingerprint, workspaceHydrationSyncDecision } from "@/lib/workplaneSettings";
 import { interiorWorkplaneGridCoordinates, workplaneThemePalette, WORKPLANE_LINE_ELEVATION, WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
@@ -184,10 +186,12 @@ type WorkplaneViewportProps = {
   mirrorReferenceShapes: WorkplaneShape[];
   placementWorkplane: PlacementWorkplane;
   workplaneMode: boolean;
+  pendingShapeAsset?: ShapeAsset | null;
+  onPendingShapeChange?: (asset: ShapeAsset | null) => void;
   initialSnap?: GridSize;
   initialWorkspace?: WorkplaneWorkspaceSettings;
   workspaceSettingsKey?: string | null;
-  onAddShape: (shape: ShapeAsset, point?: PlacementPoint) => void;
+  onAddShape: (shape: ShapeAsset, point?: PlacementPoint, workplane?: PlacementWorkplane) => void;
   onAlignAnchorChange: (id: string) => void;
   onAlignPreview: (axis: AlignAxis, target: AlignTarget) => void;
   onAlignPreviewClear: () => void;
@@ -262,6 +266,7 @@ type ThreeState = {
   controls: OrbitControls;
   workplaneLayer: THREE.Group;
   workplanePreviewLayer: THREE.Group;
+  shapePreviewLayer: THREE.Group;
   shapeLayer: THREE.Group;
   helperLayer: THREE.Group;
   moveDimensionLayer: THREE.Group;
@@ -2206,6 +2211,8 @@ export function WorkplaneViewport({
   mirrorReferenceShapes,
   placementWorkplane,
   workplaneMode,
+  pendingShapeAsset = null,
+  onPendingShapeChange,
   initialSnap,
   initialWorkspace,
   workspaceSettingsKey,
@@ -2307,6 +2314,20 @@ export function WorkplaneViewport({
   const workplaneModeRef = useRef(workplaneMode);
   placementWorkplaneRef.current = placementWorkplane;
   workplaneModeRef.current = workplaneMode;
+  const pendingShapeAssetRef = useRef<ShapeAsset | null>(null);
+  const pendingShapeBaseRef = useRef<WorkplaneShape | null>(null);
+  const pendingPlacementRef = useRef<{ point: PlacementPoint; workplane: PlacementWorkplane } | null>(null);
+  const placementPressRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    pendingShapeAssetRef.current = pendingShapeAsset;
+    pendingShapeBaseRef.current = pendingShapeAsset ? makeShapeFromAsset(pendingShapeAsset) : null;
+    pendingPlacementRef.current = null;
+    placementPressRef.current = null;
+    if (!pendingShapeAsset) {
+      syncShapePlacementGhost(threeRef.current, null);
+    }
+  }, [pendingShapeAsset]);
   const perfRef = useRef({
     fps: 0,
     frameMs: 0,
@@ -3994,6 +4015,12 @@ export function WorkplaneViewport({
         return;
       }
 
+      if (pendingShapeAssetRef.current) {
+        event.preventDefault();
+        placementPressRef.current = { x: event.clientX, y: event.clientY };
+        return;
+      }
+
       const handle = pickTransformHandle(event.clientX, event.clientY);
       if (handle) {
         const shape = shapesRef.current.find((entry) => entry.id === handle.id);
@@ -4291,6 +4318,17 @@ export function WorkplaneViewport({
         );
         return;
       }
+      if (pendingShapeAssetRef.current && pendingShapeBaseRef.current) {
+        const surface = pickPlacementSurface(event.clientX, event.clientY, event.shiftKey);
+        const workplane = surface?.workplane ?? placementWorkplaneRef.current;
+        const point = toPlacementWorkplanePoint(event.clientX, event.clientY, workplane);
+        if (point) {
+          const base = pendingShapeBaseRef.current;
+          pendingPlacementRef.current = { point, workplane };
+          syncShapePlacementGhost(threeRef.current, { ...base, ...placementPatchForNewShape(base, workplane, point) });
+        }
+        return;
+      }
       if (modifierActiveRef.current) {
         updateModifierEdgeHover(event.clientX, event.clientY);
         return;
@@ -4383,12 +4421,34 @@ export function WorkplaneViewport({
     if (workplaneModeRef.current) {
       syncWorkplaneHoverPreview(threeRef.current, null, workspaceRef.current, resolvedThemeRef.current);
     }
+    if (pendingShapeAssetRef.current) {
+      pendingPlacementRef.current = null;
+      syncShapePlacementGhost(threeRef.current, null);
+    }
     if (modifierActiveRef.current) clearModifierEdgeHover();
   }, [clearModifierEdgeHover]);
 
   const finishDrag = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const state = threeRef.current;
+      const pendingAsset = pendingShapeAssetRef.current;
+      if (pendingAsset) {
+        const press = placementPressRef.current;
+        placementPressRef.current = null;
+        if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) < 5) {
+          const surface = pickPlacementSurface(event.clientX, event.clientY, event.shiftKey);
+          const workplane = surface?.workplane ?? pendingPlacementRef.current?.workplane ?? placementWorkplaneRef.current;
+          const point = toPlacementWorkplanePoint(event.clientX, event.clientY, workplane) ?? pendingPlacementRef.current?.point;
+          if (point) {
+            onAddShape(pendingAsset, point, workplane);
+            if (!event.altKey) {
+              onPendingShapeChange?.(null);
+              syncShapePlacementGhost(state, null);
+            }
+          }
+        }
+        return;
+      }
       const transform = transformRef.current;
       if (transform) {
         if (event.currentTarget.hasPointerCapture(transform.pointerId)) {
@@ -4500,7 +4560,7 @@ export function WorkplaneViewport({
       }
       onInteractionActiveChange?.(false);
     },
-    [clearMoveDimensions, onInteractionActiveChange, onSelectShape, onUpdateShape, rememberResizeAnchor, setMarqueeFromState, shapesInMarquee, suppressLiftEditAfterDrag],
+    [clearMoveDimensions, onAddShape, onInteractionActiveChange, onPendingShapeChange, onSelectShape, onUpdateShape, pickPlacementSurface, rememberResizeAnchor, setMarqueeFromState, shapesInMarquee, suppressLiftEditAfterDrag, toPlacementWorkplanePoint],
   );
 
   const handleDrop = useCallback(
@@ -4759,7 +4819,11 @@ export function WorkplaneViewport({
       }
 
       const key = event.key.toLowerCase();
-      if (event.key === "Escape" && workplaneModeRef.current) {
+      if (event.key === "Escape" && pendingShapeAssetRef.current) {
+        event.preventDefault();
+        onPendingShapeChange?.(null);
+        syncShapePlacementGhost(threeRef.current, null);
+      } else if (event.key === "Escape" && workplaneModeRef.current) {
         event.preventDefault();
         onWorkplaneModeChange(false);
       } else if (event.key === "Escape" && (rulerToolsOpen || rulerModeRef.current || rulerDeleteModeRef.current || rulerMoveModeRef.current)) {
@@ -4793,7 +4857,7 @@ export function WorkplaneViewport({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onWorkplaneModeChange, resetView, rulerToolsOpen, setPlacementWorkplaneAtSelection, setRulerActive, togglePlacementWorkplane, toggleProjection, zoomCamera]);
+  }, [onPendingShapeChange, onWorkplaneModeChange, resetView, rulerToolsOpen, setPlacementWorkplaneAtSelection, setRulerActive, togglePlacementWorkplane, toggleProjection, zoomCamera]);
 
   return (
     <main className="workplane-stage">
@@ -4867,7 +4931,7 @@ export function WorkplaneViewport({
         )}
       </div>
 
-      <section className={`workplane-wrap ${workplaneMode ? "placing-workplane" : ""} ${rulerMode ? "ruler-mode" : ""} ${rulerDeleteMode ? "ruler-delete-mode" : ""} ${rulerMoveMode ? "ruler-move-mode" : ""} ${modifierActive ? "modifier-edge-pick" : ""}`} aria-label="Workplane">
+      <section className={`workplane-wrap ${workplaneMode ? "placing-workplane" : ""} ${pendingShapeAsset ? "placing-shape" : ""} ${rulerMode ? "ruler-mode" : ""} ${rulerDeleteMode ? "ruler-delete-mode" : ""} ${rulerMoveMode ? "ruler-move-mode" : ""} ${modifierActive ? "modifier-edge-pick" : ""}`} aria-label="Workplane">
         <div className="workplane-plane">
           <div
             className="three-workplane-host"
@@ -5044,6 +5108,10 @@ function createThreeScene(host: HTMLDivElement): ThreeState {
   workplanePreviewLayer.name = "WorkplanePreview";
   workplanePreviewLayer.layers.set(RENDER_LAYER_PREVIEWS);
   workplanePreviewLayer.visible = false;
+  const shapePreviewLayer = new THREE.Group();
+  shapePreviewLayer.name = "ShapePlacementPreview";
+  shapePreviewLayer.layers.set(RENDER_LAYER_PREVIEWS);
+  shapePreviewLayer.visible = false;
   const shapeLayer = new THREE.Group();
   shapeLayer.name = "Shapes";
   shapeLayer.layers.set(RENDER_LAYER_SHAPES);
@@ -5056,7 +5124,7 @@ function createThreeScene(host: HTMLDivElement): ThreeState {
   const modifierLayer = new THREE.Group();
   modifierLayer.name = "EdgeModifier";
   modifierLayer.layers.set(RENDER_LAYER_MODIFIERS);
-  scene.add(workplaneLayer, workplanePreviewLayer, shapeLayer, helperLayer, moveDimensionLayer, modifierLayer);
+  scene.add(workplaneLayer, workplanePreviewLayer, shapePreviewLayer, shapeLayer, helperLayer, moveDimensionLayer, modifierLayer);
 
   const raycaster = new THREE.Raycaster();
   raycaster.params.Line = { threshold: 1.15 };
@@ -5088,6 +5156,7 @@ function createThreeScene(host: HTMLDivElement): ThreeState {
     controls,
     workplaneLayer,
     workplanePreviewLayer,
+    shapePreviewLayer,
     shapeLayer,
     helperLayer,
     moveDimensionLayer,
@@ -5464,6 +5533,52 @@ function syncWorkplaneHoverPreview(
   layer.visible = true;
   setObjectRenderLayer(layer, RENDER_LAYER_PREVIEWS);
   layer.updateMatrixWorld(true);
+  state.needsRender = true;
+}
+
+function syncShapePlacementGhost(state: ThreeState | null, shape: WorkplaneShape | null) {
+  if (!state) return;
+  const layer = state.shapePreviewLayer;
+  if (!shape) {
+    if (layer.visible) {
+      layer.visible = false;
+      state.needsRender = true;
+    }
+    return;
+  }
+  if (layer.userData.ghostKey !== shape.id) {
+    disposeChildren(layer);
+    layer.userData.ghostKey = shape.id;
+    const ghost = createShapeObject(shape, false, undefined, false);
+    ghost.traverse((child) => {
+      child.matrixAutoUpdate = true;
+      child.raycast = () => undefined;
+      const mesh = child as THREE.Mesh;
+      if ((mesh as { isMesh?: boolean }).isMesh && mesh.material) {
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const ghostMaterials = materials.map((material) => {
+          const clone = material.clone();
+          clone.transparent = true;
+          clone.opacity = 0.5;
+          clone.depthWrite = false;
+          return clone;
+        });
+        mesh.material = Array.isArray(mesh.material) ? ghostMaterials : ghostMaterials[0];
+      }
+    });
+    setObjectRenderLayer(ghost, RENDER_LAYER_PREVIEWS);
+    layer.add(ghost);
+  }
+  const ghost = layer.children[0];
+  if (ghost) {
+    ghost.position.set(shape.x, (shape.elevation ?? 0) + shape.height / 2, shape.z);
+    ghost.rotation.set(
+      THREE.MathUtils.degToRad(shape.rotationX ?? 0),
+      THREE.MathUtils.degToRad(shape.rotation),
+      THREE.MathUtils.degToRad(shape.rotationZ ?? 0),
+    );
+  }
+  layer.visible = true;
   state.needsRender = true;
 }
 

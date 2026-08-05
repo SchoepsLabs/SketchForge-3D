@@ -3998,6 +3998,11 @@ button {
   cursor: crosshair;
 }
 
+.workplane-wrap.placing-shape .three-workplane-host,
+.workplane-wrap.placing-shape .three-workplane-host:active {
+  cursor: copy;
+}
+
 .workplane-wrap.ruler-mode .three-workplane-host,
 .workplane-wrap.ruler-mode .three-workplane-host:active {
   cursor: crosshair;

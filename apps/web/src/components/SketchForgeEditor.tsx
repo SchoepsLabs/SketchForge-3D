@@ -6667,12 +6667,15 @@ export function SketchForgeEditor({
     };
   }, []);
 
+  const [pendingShapeAsset, setPendingShapeAsset] = useState<ShapeAsset | null>(null);
+
   const addShape = useCallback(
-    (asset: ShapeAsset, point?: PlacementPoint) => {
+    (asset: ShapeAsset, point?: PlacementPoint, workplane?: PlacementWorkplane) => {
       const shape = makeShapeFromAsset(asset);
+      const targetWorkplane = workplane ?? placementWorkplane;
       const nextShape = {
         ...shape,
-        ...placementPatchForNewShape(shape, placementWorkplane, point ?? placementWorkplane.origin),
+        ...placementPatchForNewShape(shape, targetWorkplane, point ?? targetWorkplane.origin),
       };
       commitShapes([...shapes, nextShape], nextShape.id, `${asset.name} added`);
     },
@@ -8850,7 +8853,11 @@ export function SketchForgeEditor({
           setMenuOpen(false);
         }}
         onAddShape={(shape) => {
-          addShape(shape);
+          if (workspaceSettings.cruiseShapes && toolbarMode !== "sketch") {
+            setPendingShapeAsset(shape);
+          } else {
+            addShape(shape);
+          }
           setTopPanel(null);
           setMenuOpen(false);
         }}
@@ -8908,6 +8915,8 @@ export function SketchForgeEditor({
           mirrorReferenceShapes={shapes}
           placementWorkplane={placementWorkplane}
           workplaneMode={workplaneMode}
+          pendingShapeAsset={pendingShapeAsset}
+          onPendingShapeChange={setPendingShapeAsset}
           initialSnap={snapGrid}
           initialWorkspace={workspaceSettings}
           workspaceSettingsKey={projectId ?? "local-workplane"}
