@@ -7,6 +7,51 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 6, task 1 (assistant backend route)
+- Shipped: `app/api/assistant/route.ts` + four new libs, 41 new tests. The route spawns the locally
+  installed Claude Code CLI (`claude -p --output-format stream-json --verbose
+  --include-partial-messages --strict-mcp-config --mcp-config <file> --tools "" --allowedTools
+  mcp__sketchforge`), writes the message to its **stdin**, and translates stream-json into an SSE
+  event union (`session` / `text` / `tool` / `tool-result` / `result` / `error`). No API key
+  anywhere: the turn bills against Marty's subscription. The spawned CLI's only tools come from
+  `scripts/sketchforge-mcp-server.mjs` via `--mcp-config`, with `SKETCHFORGE_URL` set to the origin
+  of the request that started the turn — so the dock's Claude and the desktop bridge share one tool
+  layer, and the dev-server port is discovered, never hardcoded.
+- Probed CLI 2.1.222 before designing, which changed the design three times:
+  (a) `--mcp-config`, `--allowedTools` and `--tools` are **variadic**, so a prompt passed as a
+  positional argument after any of them is eaten — `claude -p --tools "" "hello"` fails with "Input
+  must be provided either through stdin or as a prompt argument". The prompt therefore always goes
+  over stdin, which also keeps it out of the process list and off the Windows arg-length limit.
+  (b) On Windows `claude` resolves to an npm `.cmd` shim, and Node refuses to spawn a `.cmd` without
+  `shell: true` — so every argument had to become a flag, a file path, or a bare token. Long text
+  (system prompt, MCP config JSON) goes through temp **files**; `--append-system-prompt-file` exists
+  but is only mentioned in `--bare`'s help text, so it was verified by running it, not by reading.
+  (c) With `--include-partial-messages` the same assistant text arrives twice — as `stream_event`
+  text deltas and again in the completed `assistant` message. `createAssistantStreamParser` tracks
+  the message ids that streamed and drops the duplicate block; there is a test named for exactly
+  that. It also keeps a tool_use-id → name map so a later `tool_result` can be labelled.
+- Verified live against the running editor on :3001 (editor 63398, the M3 spacer left over from the
+  MCP session): "reply pong" streamed two text deltas and a result; "list the objects and tell me
+  each height" produced `list_objects` + its result + the right answer (8 × 8 × 6 mm, 384 tris) with
+  `mcpServers: [{sketchforge, connected}]` and all 17 tools listed in the init event; a follow-up
+  with the returned `sessionId` answered "6 mm" from context alone, so `--resume` continuity works.
+- Two decisions worth recording. (1) **`--tools ""`**: the dock's Claude gets *no* built-in tools —
+  no Read, no Bash, no repo access. It is a scene assistant, and a permission prompt for a built-in
+  tool would hang a headless turn with nothing to answer it. (2) **Guard duplication**: the
+  localhost/dev-only gate is copied into new `lib/localRequestGuard.ts` rather than refactored out of
+  `api/sketchforge-mcp/route.ts`, to keep that upstream file untouched. If the guard ever changes,
+  both need the edit — flagged here so it is not a silent drift.
+- Untested live: the missing-binary path (needs a dev server restarted with `SKETCHFORGE_CLAUDE_BIN`
+  pointing at nothing). It is covered by the code both ways — ENOENT for a real binary, and the
+  "exit code with shell noise" case that a missing `.cmd` produces instead.
+- typecheck + test (262) green.
+- Blocked: nothing. The optional direct-Anthropic-API fallback branch from the roadmap is *not* in
+  this commit: the CLI path is the one Marty will use, and a second transport that cannot call MCP
+  tools would be a half-feature. Revisit only if a machine without Claude Code ever needs the dock.
+- PR candidates: none — this is fork-shaped (it assumes this repo's MCP server).
+- Next: Block 6 task 2 — `components/assistant/AssistantDock.tsx`, right-side collapsible dock with
+  streaming render, Enter/Shift+Enter/Esc, collapsed state in localStorage.
+
 ## 2026-08-04 — Live session (Cowork, not an overnight block)
 - Shipped, five commits on `lumera-custom` (d2ff033, 80d444e, 9999d09, e03165f, 5a4c9fc):
   (1) **Mouse control scheme presets** — new `lib/mouseControls.ts` (SketchForge default, Tinkercad,
