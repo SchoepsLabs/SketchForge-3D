@@ -183,24 +183,32 @@ Tinkercad interactions (sources cited): the cruise/placement notes in that NIGHT
 
 ## Block 6 — In-editor Claude chat dock (added 2026-08-04, Marty's ask: design without alt-tabbing)
 
-Goal: a collapsible chat panel inside the editor, powered by the Anthropic API
-(`ANTHROPIC_API_KEY` server-side in `.env.local`, never shipped to the client), whose tool calls
-drive the scene through the **existing** MCP command layer — `sketchforgeMcpProtocol.ts` already
-defines every action, so the chat's tool schema is derived from it, not hand-written twice.
+Goal: a collapsible chat panel inside the editor, powered by **the locally installed Claude Code
+CLI in headless print mode** — `claude -p` runs on Marty's existing subscription, so **no API key
+and no per-token billing**. The spawned Claude gets scene tools via the repo's own
+`scripts/sketchforge-mcp-server.mjs` (`--mcp-config`), i.e. the exact tool layer the desktop
+bridge already uses — nothing hand-written twice. Direct Anthropic-API mode stays as an optional
+fallback if `ANTHROPIC_API_KEY` is ever set.
 
-- [ ] **Assistant API route** — new `app/api/assistant/route.ts`: streaming Messages API call,
-      tool definitions generated from the MCP protocol action list, key check with an actionable
-      error when unset. Model constant + selector plumbing (Sonnet default, Opus/Haiku options).
-      *Accept:* route streams; missing key returns a friendly message, not a 500; no key in client JS.
+- [ ] **Assistant backend route** — new `app/api/assistant/route.ts`: spawns
+      `claude -p --output-format stream-json --mcp-config <sketchforge server> --allowedTools "mcp__sketchforge__*"`
+      with the user message, streams stdout deltas to the client, `--resume <sessionId>` for
+      conversation continuity across dock messages. Detect a missing `claude` binary and return an
+      actionable message (install command) instead of a 500. Server-side only, dev-mode only
+      (same `localOnly` guard as the MCP route). Optional `ANTHROPIC_API_KEY` branch = direct
+      Messages API with the same streamed shape.
+      *Accept:* dock replies stream on a machine with only Claude Code installed — no key anywhere;
+      follow-up messages keep context via --resume.
 - [ ] **Chat dock panel** — new `components/assistant/AssistantDock.tsx`, right-side collapsible
-      dock (like the inspector), message list + input, streaming render, busy state while a tool
-      loop runs. Keyboard: Enter sends, Shift+Enter newline, Esc collapses.
+      dock (like the inspector), message list + input, streaming render, busy state while the CLI
+      turn runs. Keyboard: Enter sends, Shift+Enter newline, Esc collapses.
       *Accept:* dock never overlaps the inspector; collapsed state persists in localStorage.
-- [ ] **Tool-execution loop** — assistant tool calls are executed against the same handlers the MCP
-      bridge uses (the `command.action` switch in `SketchForgeEditor.tsx` ~7967); results stream back
-      as tool_result blocks until the assistant stops. Cap loop iterations; surface each executed
-      action as a one-line entry in the transcript.
-      *Accept:* "add a 20mm box at the origin and fillet the top edges" works end-to-end from the dock.
+- [ ] **Tool round-trip through the bridge** — the spawned CLI acts on the scene via the
+      sketchforge MCP server, which talks to the dev server's existing command queue — so the dock's
+      Claude edits the same live editor the user is looking at. Surface each executed tool call as a
+      one-line entry in the transcript (parse stream-json tool_use events).
+      *Accept:* "add a 20mm box at the origin and fillet the top edges" typed in the dock lands in
+      the visible scene, with the tool calls listed in the transcript.
 - [ ] **Iteration checkpoints + version selector** (Marty's ask) — snapshot the shape state before
       each assistant edit batch (reuse `editorHistory` snapshots; tag them `assistant#N` with the
       prompt text). Dock header gets a version dropdown listing iterations; picking one restores that
