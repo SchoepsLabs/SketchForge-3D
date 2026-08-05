@@ -251,6 +251,16 @@ work done in the editor stops being ephemeral.
       to `NIGHTLOG-style docs/assistant/SESSIONS.md` so overnight runs and the desktop
       Claude can see what was designed in the dock and why.
       *Accept:* log entry per conversation with timestamp, prompts, and executed actions.
+- [ ] **Save-as for scratch scenes** (found in live acceptance 2026-08-05) — `save_project`
+      only promotes an already-open local project; a scratch scene (`projectId: null`) cannot
+      be saved by name at all, which is the main new-design flow. The dock correctly refused,
+      and also held `send_to_print` because `<project>-<date>.stl` would have landed in the
+      auto-watched outbox as "SketchForge design-…". Add a create-and-name path:
+      `save_project` on a scratch scene creates the local project with the given name first,
+      then shares. Update protocol + server + editor handler together — the
+      `mcpToolCoverage` drift guard from the 3-hour block must stay green.
+      *Accept:* dock "save the project as X, then send it to print" works from a scratch
+      scene: X.skf in the shared library, X-<date>.stl in the outbox.
 
 ### Deliberately out of scope this month
 - Full parametric constraint solver (rewrite; breaks the mergeability rule) — generators cover the 80%. [§3.3]
