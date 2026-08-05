@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { snapShapeFootprintToVisibleGrid } from "@/lib/gridSnap";
+import { nudgeStepForSnap, snapGridStep, snapShapeFootprintToVisibleGrid } from "@/lib/gridSnap";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import type { WorkplaneShape } from "@/types/sketchforge";
 
@@ -88,5 +88,38 @@ describe("Snap to Grid", () => {
     expect(snapped.z).toBeCloseTo(-2, 6);
     expect(25.5 + snapped.x - group.x).toBeCloseTo(28.5, 6);
     expect(6.8 + snapped.z - group.z).toBeCloseTo(6.5, 6);
+  });
+});
+
+describe("snap grid steps", () => {
+  it("reads millimetres out of the grid size label", () => {
+    expect(snapGridStep("0.1 mm")).toBe(0.1);
+    expect(snapGridStep("1.0 mm")).toBe(1);
+    expect(snapGridStep("5.0 mm")).toBe(5);
+  });
+
+  it("knows the two labels that are not a number", () => {
+    expect(snapGridStep("Off")).toBe(0);
+    // A LEGO stud pitch, matching the viewport's placement snapping.
+    expect(snapGridStep("Brick")).toBe(8);
+  });
+});
+
+describe("nudgeStepForSnap", () => {
+  it("moves one snap step per arrow press", () => {
+    expect(nudgeStepForSnap("1.0 mm")).toBe(1);
+    expect(nudgeStepForSnap("0.25 mm")).toBe(0.25);
+    expect(nudgeStepForSnap("Brick")).toBe(8);
+  });
+
+  it("multiplies by ten with Shift held", () => {
+    expect(nudgeStepForSnap("1.0 mm", { coarse: true })).toBe(10);
+    expect(nudgeStepForSnap("0.5 mm", { coarse: true })).toBe(5);
+    expect(nudgeStepForSnap("Brick", { coarse: true })).toBe(80);
+  });
+
+  it("falls back to 1 mm with snapping off, so arrows still do something", () => {
+    expect(nudgeStepForSnap("Off")).toBe(1);
+    expect(nudgeStepForSnap("Off", { coarse: true })).toBe(10);
   });
 });

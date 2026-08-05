@@ -83,7 +83,7 @@ import {
 } from "@/lib/cadModifierRuntime";
 import { cloneWorkplaneShapeSnapshot, compactEdgeTreatmentHistory, edgeTreatmentAppliedFrame, restoreShapeBeforeEdgeTreatment } from "@/lib/edgeTreatmentHistory";
 import { appendEditorHistorySnapshot, boundedEditorHistoryState, editorHistoryEntry, editorHistoryForExport, hydrateEditorHistoryState, projectShapesFingerprint, type EditorHistoryEntry, type EditorHistoryExportLimit, type EditorHistoryState } from "@/lib/editorHistory";
-import { snapShapeFootprintToVisibleGrid, visibleGridStep } from "@/lib/gridSnap";
+import { nudgeStepForSnap, snapShapeFootprintToVisibleGrid, visibleGridStep } from "@/lib/gridSnap";
 import { createLocalId } from "@/lib/localIds";
 import { placeSelectionOnPlate } from "@/lib/placeOnPlate";
 import { projectExportFileName } from "@/lib/exportNames";
@@ -8773,7 +8773,9 @@ export function SketchForgeEditor({
         return;
       }
 
-      const step = event.shiftKey ? 5 : 1;
+      // One snap step per press, 10× with Shift, so a nudge lands on the same
+      // grid a drag would snap to instead of a hardcoded millimetre.
+      const step = nudgeStepForSnap(snapGrid, { coarse: event.shiftKey });
       if (shortcut && event.key === "ArrowUp") {
         event.preventDefault();
         raiseSelected(step);
@@ -8834,6 +8836,7 @@ export function SketchForgeEditor({
     sketchUndo,
     setSelectionHoleMode,
     showHidden,
+    snapGrid,
     toggleAlignMode,
     toggleHidden,
     toggleMirrorMode,

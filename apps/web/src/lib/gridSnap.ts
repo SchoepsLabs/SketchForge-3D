@@ -1,7 +1,31 @@
-import type { WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { GridSize, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
 const MIN_VISIBLE_GRID_STEP = 1;
 const MAX_VISIBLE_GRID_STEP = 200;
+
+/** Millimetres per snap step. 0 means snapping is off. */
+export function snapGridStep(size: GridSize) {
+  if (size === "Off") {
+    return 0;
+  }
+  if (size === "Brick") {
+    return 8;
+  }
+  return Number.parseFloat(size) || 1;
+}
+
+export const NUDGE_COARSE_MULTIPLIER = 10;
+const NUDGE_STEP_WITHOUT_SNAP = 1;
+
+/**
+ * How far one arrow-key press moves the selection: one snap step, or 10× with
+ * Shift. With snapping off there is no grid to follow, so it falls back to 1 mm
+ * — the step the nudge used before it was tied to the grid.
+ */
+export function nudgeStepForSnap(size: GridSize, { coarse = false }: { coarse?: boolean } = {}) {
+  const step = snapGridStep(size) || NUDGE_STEP_WITHOUT_SNAP;
+  return coarse ? step * NUDGE_COARSE_MULTIPLIER : step;
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));

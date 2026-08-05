@@ -40,6 +40,7 @@ import {
   type PlacementWorkplane,
 } from "@/lib/placementWorkplane";
 import { makeShapeFromAsset } from "@/lib/shapeCatalog";
+import { snapGridStep as snapStep } from "@/lib/gridSnap";
 import { clearActiveShapeDragAsset, isShapeDragTransfer, parseShapeDragPayload, readActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
 import { regularPolygonFootprintScale } from "@/lib/regularPolygonFootprint";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings, workplaneSettingsFingerprint, workspaceHydrationSyncDecision } from "@/lib/workplaneSettings";
@@ -454,16 +455,6 @@ function shouldBuildCutPreviews(transform: TransformDragState | null, drag: Drag
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function snapStep(size: GridSize) {
-  if (size === "Off") {
-    return 0;
-  }
-  if (size === "Brick") {
-    return 8;
-  }
-  return Number.parseFloat(size) || 1;
 }
 
 function snapValue(value: number, step: number) {

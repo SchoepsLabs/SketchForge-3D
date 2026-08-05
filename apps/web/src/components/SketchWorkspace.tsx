@@ -9,6 +9,7 @@ import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import type { GridSize, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import { snapGridStep as snapStep } from "@/lib/gridSnap";
 
 export type SketchTool = "line" | "bezier" | "smooth" | "select" | "refine" | "erase" | "measure";
 export type SketchSelection =
@@ -60,12 +61,6 @@ type PointerAction =
   | { kind: "resize-image"; pointerId: number; imageId: string; handle: ResizeHandle; current: { x: number; z: number }; start: SketchImage };
 
 type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
-
-function snapStep(size: GridSize) {
-  if (size === "Off") return 0;
-  if (size === "Brick") return 8;
-  return Number.parseFloat(size) || 1;
-}
 
 function snapValue(value: number, step: number) {
   return step > 0 ? Math.round(value / step) * step : value;
