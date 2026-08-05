@@ -7488,3 +7488,57 @@ html[data-theme="dark"] .assistant-tool-failure {
 html[data-theme="dark"] .workplane-context-item.danger:hover:not(:disabled) {
   color: #e79b95;
 }
+
+/* ---- Autosaved-scene notice (Block 7) ------------------------------------ */
+
+.scene-draft-notice {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 10px 8px 14px;
+  font-size: 13px;
+  color: var(--foreground);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.scene-draft-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.scene-draft-button {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--muted-strong);
+  cursor: pointer;
+  background: transparent;
+  border-radius: 5px;
+}
+
+.scene-draft-button:hover {
+  color: var(--foreground);
+  background: var(--tile-hover);
+}
+
+.scene-draft-button.primary {
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--primary);
+}
+
+.scene-draft-button.primary:hover {
+  color: #ffffff;
+  filter: brightness(1.06);
+}
+
+html[data-theme="dark"] .scene-draft-button.primary {
+  color: #06212c;
+}

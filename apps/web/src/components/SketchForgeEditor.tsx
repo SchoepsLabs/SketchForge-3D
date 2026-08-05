@@ -53,6 +53,7 @@ import {
 import { WorkplaneViewport } from "./WorkplaneViewport";
 import { AssistantDock } from "./assistant/AssistantDock";
 import { ContextMenu } from "./workplane/ContextMenu";
+import { SceneDraftGuard } from "./workplane/SceneDraftGuard";
 import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "./SketchWorkspace";
 import { EdgeModifierPanel } from "./workplane/EdgeModifierPanel";
 import {
@@ -6098,6 +6099,15 @@ export function SketchForgeEditor({
   // lands in the normal undo chain rather than a parallel history.
   const readShapesForAssistant = useCallback(() => shapesRef.current, []);
 
+  const restoreSceneDraft = useCallback(
+    (draftShapes: WorkplaneShape[], draftSelection: string[]) => {
+      invalidateCadModifierSession();
+      // Through commitShapes, so resuming a draft is itself one undoable step.
+      commitShapes(draftShapes, draftSelection, `Resumed autosaved scene (${draftShapes.length} object${draftShapes.length === 1 ? "" : "s"})`);
+    },
+    [commitShapes, invalidateCadModifierSession],
+  );
+
   const restoreShapesForAssistant = useCallback(
     (next: WorkplaneShape[], label: string) => {
       invalidateCadModifierSession();
@@ -9088,6 +9098,18 @@ export function SketchForgeEditor({
           onThemePreferenceChange={onThemePreferenceChange}
           />
         )}
+        {/* `shapes` initialises synchronously from the loaded scene, so the first
+            render already holds the real scene: the draft check can run at once
+            without risking an autosave of an empty scene over a good draft. */}
+        <SceneDraftGuard
+          shapes={shapes}
+          selectedIds={selectedIds}
+          projectId={projectId ?? null}
+          projectName={projectName}
+          ready
+          onRestore={restoreSceneDraft}
+          onNotice={setNotice}
+        />
         <AssistantDock onReadShapes={readShapesForAssistant} onRestoreShapes={restoreShapesForAssistant} onReadScene={mcpSceneSnapshot} />
         {contextMenu ? (
           <ContextMenu
