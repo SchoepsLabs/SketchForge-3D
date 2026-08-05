@@ -7417,3 +7417,25 @@ html[data-theme="dark"] .assistant-error {
 html[data-theme="dark"] .assistant-tool-failure {
   color: #e79b95;
 }
+
+.assistant-version-select {
+  max-width: 150px;
+  padding: 3px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--muted-strong);
+  cursor: pointer;
+  background: var(--tile);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.assistant-version-select:hover:not(:disabled) {
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+
+.assistant-version-select:disabled {
+  cursor: default;
+  opacity: 0.45;
+}

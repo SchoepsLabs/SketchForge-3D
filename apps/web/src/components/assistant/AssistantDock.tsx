@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  appendAssistantCheckpoint,
+  assistantRestoreLabel,
+  assistantVersionOptions,
+  findAssistantVersion,
+  ASSISTANT_CURRENT_VERSION_ID,
+  type AssistantCheckpoint,
+} from "@/lib/assistantCheckpoints";
 import {
   assistantDockReducer,
   initialAssistantDockState,
@@ -9,6 +17,7 @@ import {
 } from "@/lib/assistantDockState";
 import { ASSISTANT_ROUTE, createAssistantEventDecoder } from "@/lib/assistantProtocol";
 import { readMcpEditorNumber } from "@/lib/mcpEditorIdentity";
+import type { WorkplaneShape } from "@/types/sketchforge";
 
 /**
  * Collapsible chat dock on the right edge of the editor body.
@@ -70,15 +79,31 @@ function ReplyBody({ message }: { message: AssistantReplyMessage }) {
   );
 }
 
-export function AssistantDock() {
+export type AssistantDockProps = {
+  /** Current scene, read just before and just after each assistant turn. */
+  onReadShapes?: () => WorkplaneShape[];
+  /** Commits a restored snapshot through the editor's normal undoable path. */
+  onRestoreShapes?: (shapes: WorkplaneShape[], label: string) => void;
+};
+
+export function AssistantDock({ onReadShapes, onRestoreShapes }: AssistantDockProps = {}) {
   const [state, dispatch] = useReducer(assistantDockReducer, initialAssistantDockState);
   const [collapsed, setCollapsed] = useState(true);
   const [available, setAvailable] = useState(false);
   const [draft, setDraft] = useState("");
+  const [checkpoints, setCheckpoints] = useState<AssistantCheckpoint[]>([]);
+  const [versionId, setVersionId] = useState(ASSISTANT_CURRENT_VERSION_ID);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const readShapesRef = useRef(onReadShapes);
+  const restoreShapesRef = useRef(onRestoreShapes);
+
+  readShapesRef.current = onReadShapes;
+  restoreShapesRef.current = onRestoreShapes;
+
+  const versions = useMemo(() => assistantVersionOptions(checkpoints), [checkpoints]);
 
   useEffect(() => {
     sessionIdRef.current = state.sessionId;
@@ -123,6 +148,10 @@ export function AssistantDock() {
 
     setDraft("");
     dispatch({ type: "submit", userId: messageId("user"), replyId: messageId("reply"), text });
+    // Snapshot before the batch: every scene edit in this turn happens between
+    // here and the finally below, whether the turn succeeds, fails, or is stopped.
+    const before = readShapesRef.current?.() ?? null;
+    const checkpointId = messageId("iteration");
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -176,8 +205,29 @@ export function AssistantDock() {
       }
     } finally {
       abortRef.current = null;
+      const after = readShapesRef.current?.();
+      if (before && after) {
+        setCheckpoints((current) => {
+          const next = appendAssistantCheckpoint(current, { id: checkpointId, prompt: text, before, after, createdAt: Date.now() });
+          // A turn that edited the scene puts you at the newest version.
+          if (next !== current) setVersionId(ASSISTANT_CURRENT_VERSION_ID);
+          return next;
+        });
+      }
     }
   }, [draft]);
+
+  const restoreVersion = useCallback(
+    (id: string) => {
+      setVersionId(id);
+      const option = findAssistantVersion(checkpoints, id);
+      if (!option?.shapes) return;
+      // Goes through the editor's commitShapes, so the restore is itself one
+      // undoable step: undo after restoring returns to where you just were.
+      restoreShapesRef.current?.(option.shapes, assistantRestoreLabel(option));
+    },
+    [checkpoints],
+  );
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -206,6 +256,24 @@ export function AssistantDock() {
       <header className="assistant-dock-header">
         <strong>Claude</strong>
         <div className="assistant-dock-header-actions">
+          {versions.length ? (
+            <select
+              className="assistant-version-select"
+              aria-label="Assistant iteration"
+              title="Restore an earlier assistant iteration"
+              value={versionId}
+              disabled={state.busy}
+              onChange={(event) => restoreVersion(event.target.value)}
+            >
+              {versions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label} · {option.detail}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {/* Checkpoints survive "New chat" on purpose: they bookmark the scene,
+              not the conversation, and "try again from v2" outlives one chat. */}
           <button type="button" className="assistant-dock-button" onClick={() => dispatch({ type: "clear" })} disabled={state.busy || state.messages.length === 0}>
             New chat
           </button>

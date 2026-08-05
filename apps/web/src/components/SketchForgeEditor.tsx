@@ -6072,6 +6072,19 @@ export function SketchForgeEditor({
     [appendHistorySnapshot, selectedIds, syncProjectShapes],
   );
 
+  // Assistant dock (Block 6) checkpoints: read the live scene around an
+  // assistant turn, and put a restored snapshot back through commitShapes so it
+  // lands in the normal undo chain rather than a parallel history.
+  const readShapesForAssistant = useCallback(() => shapesRef.current, []);
+
+  const restoreShapesForAssistant = useCallback(
+    (next: WorkplaneShape[], label: string) => {
+      invalidateCadModifierSession();
+      commitShapes(next, [], label);
+    },
+    [commitShapes, invalidateCadModifierSession],
+  );
+
   const removeEdgeTreatment = useCallback(async (optionId: string) => {
     if (!selectedShape) {
       setNotice("Select a shape with an edge feature first");
@@ -8954,7 +8967,7 @@ export function SketchForgeEditor({
           onThemePreferenceChange={onThemePreferenceChange}
           />
         )}
-        <AssistantDock />
+        <AssistantDock onReadShapes={readShapesForAssistant} onRestoreShapes={restoreShapesForAssistant} />
       </div>
       {edgeModifier ? (
         <EdgeModifierPanel
