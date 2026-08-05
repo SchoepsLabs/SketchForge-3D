@@ -7,6 +7,34 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 6, task 3 (tool round-trip through the bridge)
+- Shipped: mostly verification — the parsing (task 1) and the transcript rendering (task 2) already
+  carried tool calls, so the code delta is one real gap the live check exposed: a **failed** call put
+  its error in a `title` tooltip only, which is the one result worth reading without hovering. Failed
+  tool lines now print the error under the call.
+- Verified live against editor 63398 with the roadmap's own acceptance prompt, "add a 20mm box at the
+  origin and fillet its top edges by 2mm". The turn ran `read_scene` → `create_shape` (kind: box,
+  20×20×20 at 0,0,0) → `list_edges` → `apply_edge_treatment` (fillet, 4 edges, 2 mm) →
+  `capture_image`, every one surfacing as a single transcript line with its parameters, each with a
+  matching ok result, and the geometry landed in the visible editor. Then deleted the test object by
+  id over the bridge so the scene was left as found (`deletedCount: 1`).
+- Worth knowing about the transcript: `capture_image` returns a text block **and** a ~490 KB base64
+  PNG block. `summarizeAssistantToolResult` renders image blocks as `[image]` and clips at 160 chars,
+  so a screenshot tool call costs one short line, not a wall of base64. That was designed for; the
+  live run confirmed it.
+- **Side effect of working on a running dev server, worth remembering:** editing
+  `SketchForgeEditor.tsx` and `globals.css` mid-session Fast-Refreshed the open editor tab, and the
+  unsaved MCP-imported "M3 spacer" from the previous session was gone by the time the dock turn ran
+  (`read_scene` reported `shapeCount: 0` before anything was created — confirmed by resuming that CLI
+  session and asking). The project had `projectId: null`, i.e. a scratch scene with nothing persisted
+  to restore from. Nothing I deleted caused it, but the lesson holds for every later UI task: an
+  unsaved scene does not survive edits to the editor component, so save the project before a session
+  that touches those two files.
+- typecheck + test (280) green.
+- Blocked: nothing.
+- Next: Block 6 task 4 — iteration checkpoints + version selector (snapshot before each assistant edit
+  batch, dropdown in the dock header, restore is itself undoable).
+
 ## 2026-08-05 — Block 6, task 2 (chat dock panel)
 - Shipped: `components/assistant/AssistantDock.tsx`, `lib/assistantDockState.ts` (pure reducer, 18
   tests), `lib/mcpEditorIdentity.ts`, ~260 lines of `.assistant-*` CSS at the end of `globals.css`,
