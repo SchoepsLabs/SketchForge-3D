@@ -175,6 +175,38 @@ Tinkercad interactions (sources cited): the cruise/placement notes in that NIGHT
       style) sourced from the same table `docs/SHORTCUTS.md` is generated from, so the two never drift.
       *Accept:* tooltip text derived from one shared constants module, not hand-typed twice.
 
+## Block 6 — In-editor Claude chat dock (added 2026-08-04, Marty's ask: design without alt-tabbing)
+
+Goal: a collapsible chat panel inside the editor, powered by the Anthropic API
+(`ANTHROPIC_API_KEY` server-side in `.env.local`, never shipped to the client), whose tool calls
+drive the scene through the **existing** MCP command layer — `sketchforgeMcpProtocol.ts` already
+defines every action, so the chat's tool schema is derived from it, not hand-written twice.
+
+- [ ] **Assistant API route** — new `app/api/assistant/route.ts`: streaming Messages API call,
+      tool definitions generated from the MCP protocol action list, key check with an actionable
+      error when unset. Model constant + selector plumbing (Sonnet default, Opus/Haiku options).
+      *Accept:* route streams; missing key returns a friendly message, not a 500; no key in client JS.
+- [ ] **Chat dock panel** — new `components/assistant/AssistantDock.tsx`, right-side collapsible
+      dock (like the inspector), message list + input, streaming render, busy state while a tool
+      loop runs. Keyboard: Enter sends, Shift+Enter newline, Esc collapses.
+      *Accept:* dock never overlaps the inspector; collapsed state persists in localStorage.
+- [ ] **Tool-execution loop** — assistant tool calls are executed against the same handlers the MCP
+      bridge uses (the `command.action` switch in `SketchForgeEditor.tsx` ~7967); results stream back
+      as tool_result blocks until the assistant stops. Cap loop iterations; surface each executed
+      action as a one-line entry in the transcript.
+      *Accept:* "add a 20mm box at the origin and fillet the top edges" works end-to-end from the dock.
+- [ ] **Iteration checkpoints + version selector** (Marty's ask) — snapshot the shape state before
+      each assistant edit batch (reuse `editorHistory` snapshots; tag them `assistant#N` with the
+      prompt text). Dock header gets a version dropdown listing iterations; picking one restores that
+      snapshot (a restore is itself undoable). This gives "try it again from iteration 3" without
+      touching manual undo.
+      *Accept:* three assistant edits → dropdown shows v1/v2/v3 + current; restoring v1 then undoing
+      returns to v3's state; manual edits between iterations survive in the history chain.
+- [ ] **Session context** — system prompt includes scene summary (shape list w/ dimensions, active
+      workplane, snap grid, units) rebuilt per request, so the assistant sees what's on the plate
+      without a read tool round-trip. Token-guard: summarize past 20 shapes.
+      *Accept:* "make the cylinder as tall as the box" resolves without the model asking which cylinder.
+
 ### Deliberately out of scope this month
 - Full parametric constraint solver (rewrite; breaks the mergeability rule) — generators cover the 80%. [§3.3]
 - Desktop app [U42] — upstream defers it to post-1.0.
