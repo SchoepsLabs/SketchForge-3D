@@ -7,6 +7,24 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 5, task 5 (Hole/Solid + Lock in the toolbar)
+- Shipped: two entries in the toolbar's Modify group next to Chamfer/Fillet, using the same
+  `active` → `.toolbar-icon.active` pressed styling, plus new `ToolbarHoleIcon`/`ToolbarLockIcon`
+  drawn as **inline `currentColor` SVGs** — the direction task 6 (icon unification) is heading, so
+  these two do not have to be redrawn later.
+- Both labels flip with the state (Make hole / Make solid, Lock / Unlock) and both call the same
+  editor callbacks the inspector and the new context menu use. Same two rules as the context menu:
+  hole/solid reads "**all** of the selection" so a mixed selection shows as solid and one press makes
+  it all holes, and it is disabled on a locked selection; Lock stays enabled while locked.
+- Caught on the way past: `EditorLoadingSkeleton` in `page.tsx` hardcodes how many shimmer buttons
+  each toolbar section has, and `combine` was still at 3 — stale since Split parts was added on
+  2026-08-04. Fixed both (combine 3→4, modify 5→7) so the loading placeholder matches the real bar.
+  Worth remembering: **any toolbar button added in `SketchForgeEditor.tsx` needs that count updated**,
+  and nothing enforces it.
+- typecheck + test (352) green.
+- Blocked: nothing.
+- Next: Block 5 task 6 — icon unification pass (replace the PNG/sprite toolbar icons with inline SVG).
+
 ## 2026-08-05 — Block 5, task 4 (right-click context menu)
 - Shipped: `components/workplane/ContextMenu.tsx` (presentational), `lib/workplaneContextMenu.ts`
   (entry list + enablement, 8 tests), gesture detection in `WorkplaneViewport.tsx`, and the item
