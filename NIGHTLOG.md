@@ -7,6 +7,35 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 6, task 2 (chat dock panel)
+- Shipped: `components/assistant/AssistantDock.tsx`, `lib/assistantDockState.ts` (pure reducer, 18
+  tests), `lib/mcpEditorIdentity.ts`, ~260 lines of `.assistant-*` CSS at the end of `globals.css`,
+  and a two-line mount in `SketchForgeEditor.tsx` (import + `<AssistantDock />`).
+- Layout decision that answers the roadmap's "never overlaps the inspector" the structural way: the
+  dock is a **flex sibling of the viewport stage inside `.editor-body`**, not an overlay. `.editor-body`
+  is already `display: flex` with `.workplane-stage { flex: 1 }`, and `.shape-inspector` is
+  `position: absolute; right: 0` *inside that stage* — so a sibling on the right takes width from the
+  viewport and the inspector re-anchors to the viewport's new right edge on its own. An overlay would
+  have needed a hand-maintained offset that drifts the moment either width changes.
+- Gotcha that would have shipped a stretched canvas: `WorkplaneViewport` sizes the renderer from
+  `host.clientWidth` and only listens to `window.resize` (:2886) — there is no ResizeObserver. Since
+  expanding/collapsing the dock changes the flex row without any window resize, the dock dispatches
+  `new Event("resize")` whenever `collapsed` changes. Grepped for ResizeObserver first; it isn't there.
+- Checked before wiring the keyboard: both keydown blocks already ignore events whose target is an
+  INPUT/TEXTAREA/SELECT or contentEditable (`SketchForgeEditor.tsx:8626`, `WorkplaneViewport.tsx:4813`),
+  so typing "d" in the composer cannot fire Duplicate. Esc additionally `stopPropagation`s so it means
+  "collapse the dock" and never "cancel the ghost placement".
+- Styling uses only the existing theme variables (`--panel`, `--border`, `--tile`, `--primary`, …),
+  which is why dark mode needed two overrides rather than a parallel ruleset.
+- Owed: **no browser screenshot of the dock this session.** Two Chrome browsers are connected to this
+  account and the extension requires the user to pick one before any automation, which would have
+  blocked an unattended session; the page still serves 200 with the dock compiled in. Layout is
+  reasoned from the CSS above rather than seen — first thing to eyeball next session.
+- typecheck + test (280) green.
+- Blocked: nothing.
+- Next: Block 6 task 3 — surface each executed tool call in the transcript end to end (the parser and
+  the reducer already carry them; this is the live round-trip check through the bridge).
+
 ## 2026-08-05 — Block 6, task 1 (assistant backend route)
 - Shipped: `app/api/assistant/route.ts` + four new libs, 41 new tests. The route spawns the locally
   installed Claude Code CLI (`claude -p --output-format stream-json --verbose
