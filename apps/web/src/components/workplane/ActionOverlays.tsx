@@ -12,6 +12,8 @@ export type MirrorOverlayState = {
 };
 
 export function AlignOverlay({
+  onDistribute,
+  canDistribute,
   overlay,
   onAlign,
   onPreview,
@@ -19,6 +21,9 @@ export function AlignOverlay({
 }: {
   overlay: AlignOverlayState;
   onAlign: (axis: AlignAxis, target: AlignTarget) => void;
+  /** Distribute is part of the same family as align, so it lives on the same overlay. */
+  onDistribute: (axis: "x" | "z") => void;
+  canDistribute: boolean;
   onPreview: (axis: AlignAxis, target: AlignTarget) => void;
   onPreviewClear: () => void;
 }) {
@@ -56,6 +61,16 @@ export function AlignOverlay({
           }}
         />
       ))}
+      {canDistribute ? (
+        <div className="distribute-controls" aria-label="Distribute evenly">
+          <button type="button" onClick={() => onDistribute("x")} title="Distribute evenly left to right">
+            Distribute X
+          </button>
+          <button type="button" onClick={() => onDistribute("z")} title="Distribute evenly front to back">
+            Distribute Z
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

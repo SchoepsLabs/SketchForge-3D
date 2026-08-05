@@ -150,6 +150,7 @@ type WorkplaneViewportProps = {
   onAlignPreview: (axis: AlignAxis, target: AlignTarget) => void;
   onAlignPreviewClear: () => void;
   onAlignSelection: (axis: AlignAxis, target: AlignTarget) => void;
+  onDistributeSelection: (axis: "x" | "z") => void;
   onMirrorPreview: (axis: AlignAxis) => void;
   onMirrorPreviewClear: () => void;
   onMirrorSelection: (axis: AlignAxis) => void;
@@ -2166,6 +2167,7 @@ export function WorkplaneViewport({
   onAlignPreview,
   onAlignPreviewClear,
   onAlignSelection,
+  onDistributeSelection,
   onMirrorPreview,
   onMirrorPreviewClear,
   onMirrorSelection,
@@ -5038,7 +5040,7 @@ export function WorkplaneViewport({
               onCancelRotationEdit={cancelRotationEdit}
             />
           ) : null}
-          {!workplaneMode && alignOverlay ? <AlignOverlay overlay={alignOverlay} onAlign={onAlignSelection} onPreview={onAlignPreview} onPreviewClear={onAlignPreviewClear} /> : null}
+          {!workplaneMode && alignOverlay ? <AlignOverlay overlay={alignOverlay} onAlign={onAlignSelection} onDistribute={onDistributeSelection} canDistribute={selectedIds.length >= 3} onPreview={onAlignPreview} onPreviewClear={onAlignPreviewClear} /> : null}
           {!workplaneMode && mirrorOverlay ? <MirrorOverlay overlay={mirrorOverlay} onMirror={onMirrorSelection} onPreview={onMirrorPreview} onPreviewClear={onMirrorPreviewClear} /> : null}
           {!workplaneMode && rulerOverlay && (rulerOverlay.points.length > 0 || rulerOverlay.hover) ? (
             <RulerOverlay

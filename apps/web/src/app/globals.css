@@ -7542,3 +7542,33 @@ html[data-theme="dark"] .workplane-context-item.danger:hover:not(:disabled) {
 html[data-theme="dark"] .scene-draft-button.primary {
   color: #06212c;
 }
+
+/* Distribute controls on the align overlay (Block 1) */
+.distribute-controls {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.distribute-controls button {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--muted-strong);
+  cursor: pointer;
+  background: transparent;
+  border-radius: 5px;
+}
+
+.distribute-controls button:hover {
+  color: var(--foreground);
+  background: var(--tile-hover);
+}

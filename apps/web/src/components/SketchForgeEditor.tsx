@@ -91,6 +91,7 @@ import { appendEditorHistorySnapshot, boundedEditorHistoryState, editorHistoryEn
 import { nudgeStepForSnap, snapShapeFootprintToVisibleGrid, visibleGridStep } from "@/lib/gridSnap";
 import { createLocalId } from "@/lib/localIds";
 import { placeSelectionOnPlate } from "@/lib/placeOnPlate";
+import { distributeShapes } from "@/lib/distributeShapes";
 import { projectExportFileName } from "@/lib/exportNames";
 import { attachProjectAsset, dedupeProjectAssets, projectAssetFromBytes, sourceFormatForFileName } from "@/lib/projectAssets";
 import { findSketchOutlineIntersection } from "@/lib/sketchProfileValidation";
@@ -7591,6 +7592,45 @@ export function SketchForgeEditor({
     );
   }, [commitShapes, hasSelection, placementWorkplane, selectedIds, shapes]);
 
+  const distributeSelection = useCallback(
+    (axis: "x" | "z") => {
+      if (selectedShapes.length < 3) {
+        setNotice("Select at least three shapes to distribute");
+        return;
+      }
+      const { moves, moved, gap, reason } = distributeShapes(
+        selectedShapes.map((shape) => ({
+          id: shape.id,
+          bounds: meshAabb(shape),
+          x: shape.x,
+          z: shape.z,
+          locked: shape.locked,
+        })),
+        axis,
+      );
+      if (moved === 0) {
+        setNotice(
+          reason === "locked"
+            ? "Selection is locked"
+            : reason === "no-room"
+              ? "These shapes overlap too much to space evenly"
+              : "Already evenly spaced",
+        );
+        return;
+      }
+      const movesById = new Map(moves.map((move) => [move.id, move]));
+      commitShapes(
+        shapes.map((shape) => {
+          const move = movesById.get(shape.id);
+          return move ? { ...shape, x: move.x, z: move.z } : shape;
+        }),
+        selectedIds,
+        `Distributed ${moved} shape${moved === 1 ? "" : "s"} evenly (${gap.toFixed(2)} mm gaps)`,
+      );
+    },
+    [commitShapes, selectedIds, selectedShapes, shapes],
+  );
+
   const centerSelectedOnPlate = useCallback(() => {
     if (!hasSelection) {
       setNotice("Select a shape first");
@@ -9194,6 +9234,7 @@ export function SketchForgeEditor({
           onAlignPreview={previewAlignSelection}
           onAlignPreviewClear={clearAlignPreview}
           onAlignSelection={alignSelectionTo}
+          onDistributeSelection={distributeSelection}
           onMirrorPreview={previewMirrorSelection}
           onMirrorPreviewClear={clearMirrorPreview}
           onMirrorSelection={mirrorSelectionAcross}
