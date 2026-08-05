@@ -7,6 +7,33 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 7, task 2 (autosave / crash-proof scenes)
+- Shipped: new `lib/sceneDraft.ts` (pure, 12 tests) + `components/workplane/SceneDraftGuard.tsx`,
+  mounted in the editor with one block of props. The scene autosaves to localStorage on a 1.2 s
+  debounce (a drag commits many times; that writes once), and a load that finds work in the draft
+  shows a "Resume / Discard" bar. This is the fix for the failure that bit us this month — the
+  MCP-imported M3 spacer that vanished on a Fast Refresh.
+- The rule that keeps it from being annoying is `already-current`: if the editor restored the same
+  scene from the project store, the draft adds nothing and **no prompt appears**. The notice only
+  shows when the draft holds work the editor does not — which is exactly the crash case. Tests name
+  all five decisions (no-draft / empty / stale / other-project / already-current).
+- Two deliberate calls: (a) a draft from a *different saved project* is never offered, but a draft
+  from the **unsaved scratch scene** (`projectId: null`) is offered anywhere, because that is the one
+  that keeps getting lost; (b) resuming goes through `commitShapes`, so it lands as one undoable step
+  like the assistant checkpoints do.
+- Quota: a scene with big imported meshes can exceed localStorage's ~5 MB. `serializeSceneDraft`
+  returns `too-large` rather than throwing inside a failed write, and the editor says "save the
+  project to keep it" **once** instead of silently not autosaving. There is a test with a
+  400k-element mesh for it.
+- Verified indirectly: after the hot reload the open editor (84306) was still heartbeating with its
+  scene intact, so the new component doesn't break the editor. **Owed:** the actual acceptance —
+  kill the tab mid-design and reopen — needs a browser, and this session still can't pick between the
+  two connected Chromes. That is the one thing to try first next visually-supervised session.
+- typecheck + test (382) green.
+- Blocked: nothing.
+- Next: Block 7 task 3 — save-to-shared flow (overwrite confirmation, clear error when
+  `SKETCHFORGE_SHARED_PROJECTS_DIR` is unset, save-and-stay, plus a dock capability).
+
 ## 2026-08-05 — Block 7, task 1 (H2D shop profile in the dock)
 - Shipped: new `lib/assistantDesignProfile.ts` + a profile section in `buildAssistantSystemPrompt`,
   wired into `api/assistant/route.ts`. 11 tests.
