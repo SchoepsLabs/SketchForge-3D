@@ -14,6 +14,7 @@ export const DEFAULT_WORKPLANE_WORKSPACE: WorkplaneWorkspaceSettings = {
   background: "#f8fbfc",
   showShadows: true,
   showGrid: true,
+  workplaneOpacity: 100,
   cruiseShapes: true,
   zoomSpeed: 5,
   units: "Metric (Default)",
@@ -38,6 +39,11 @@ function colorOrDefault(value: unknown, fallback: string) {
 
 function booleanOrDefault(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function workplaneOpacityOrDefault(value: unknown, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(100, Math.max(10, Math.round(value)));
 }
 
 function accuracyOrDefault(value: unknown, fallback: MeasurementAccuracy) {
@@ -67,6 +73,7 @@ export function normalizeWorkspaceSettings(value: unknown, fallback: WorkplaneWo
     background: stringOrDefault(candidate.background, fallback.background),
     showShadows: booleanOrDefault(candidate.showShadows, fallback.showShadows),
     showGrid: booleanOrDefault(candidate.showGrid, fallback.showGrid),
+    workplaneOpacity: workplaneOpacityOrDefault(candidate.workplaneOpacity, fallback.workplaneOpacity),
     cruiseShapes: booleanOrDefault(candidate.cruiseShapes, fallback.cruiseShapes),
     zoomSpeed: numberOrDefault(candidate.zoomSpeed, fallback.zoomSpeed),
     units,

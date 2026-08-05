@@ -5308,6 +5308,7 @@ function rebuildWorkplane(
   state.controls.zoomSpeed = 0.28 + workspace.zoomSpeed * 0.09;
 
   const activeIsBase = placementWorkplaneIsBase(placementWorkplane);
+  const workplaneOpacityFactor = clamp((workspace.workplaneOpacity ?? 100) / 100, 0.1, 1);
   const addPlane = (workplane: PlacementWorkplane, muted: boolean, showMarker: boolean) => {
     const group = new THREE.Group();
     group.name = muted ? "ReferenceWorkplane" : "ActiveWorkplane";
@@ -5318,7 +5319,7 @@ function rebuildWorkplane(
           ? theme === "dark" ? "#59646b" : "#b8c0c5"
           : palette.surface.color,
         transparent: true,
-        opacity: muted ? (theme === "dark" ? 0.17 : 0.22) : palette.surface.opacity,
+        opacity: (muted ? (theme === "dark" ? 0.17 : 0.22) : palette.surface.opacity) * workplaneOpacityFactor,
         roughness: 0.92,
         side: THREE.DoubleSide,
         polygonOffset: true,
@@ -5338,6 +5339,7 @@ function rebuildWorkplane(
         workspace.gridBlockSize,
         theme,
         muted ? theme === "dark" ? "#76828a" : "#99a3aa" : workspace.gridColor,
+        workplaneOpacityFactor,
       ));
     }
     if (showMarker) {
@@ -5471,12 +5473,14 @@ function createGridLines(
   blockSize = DEFAULT_WORKSPACE.gridBlockSize,
   theme: ResolvedAppTheme = "light",
   gridColor = DEFAULT_WORKSPACE.gridColor,
+  opacityFactor = 1,
 ) {
   const group = new THREE.Group();
   const palette = workplaneThemePalette(theme, DEFAULT_WORKSPACE.background, gridColor).grid;
-  const minor = new THREE.LineBasicMaterial({ ...palette.minor, transparent: true, depthWrite: false });
-  const major = new THREE.LineBasicMaterial({ ...palette.major, transparent: true, depthWrite: false });
-  const axis = new THREE.LineBasicMaterial({ ...palette.axis, transparent: true, depthWrite: false });
+  const withOpacity = (entry: { opacity?: number } & Record<string, unknown>) => ({ ...entry, opacity: (entry.opacity ?? 1) * opacityFactor });
+  const minor = new THREE.LineBasicMaterial({ ...withOpacity(palette.minor), transparent: true, depthWrite: false });
+  const major = new THREE.LineBasicMaterial({ ...withOpacity(palette.major), transparent: true, depthWrite: false });
+  const axis = new THREE.LineBasicMaterial({ ...withOpacity(palette.axis), transparent: true, depthWrite: false });
   const minorPoints: number[] = [];
   const majorPoints: number[] = [];
   const axisPoints: number[] = [];
@@ -5495,7 +5499,7 @@ function createGridLines(
     pushLine(points, [-width / 2, WORKPLANE_LINE_ELEVATION, centeredZ], [width / 2, WORKPLANE_LINE_ELEVATION, centeredZ]);
   }
 
-  const border = new THREE.LineBasicMaterial({ ...palette.border, transparent: true, depthWrite: false });
+  const border = new THREE.LineBasicMaterial({ ...withOpacity(palette.border), transparent: true, depthWrite: false });
   pushLine(borderPoints, [-width / 2, WORKPLANE_LINE_ELEVATION, -depth / 2], [width / 2, WORKPLANE_LINE_ELEVATION, -depth / 2]);
   pushLine(borderPoints, [width / 2, WORKPLANE_LINE_ELEVATION, -depth / 2], [width / 2, WORKPLANE_LINE_ELEVATION, depth / 2]);
   pushLine(borderPoints, [width / 2, WORKPLANE_LINE_ELEVATION, depth / 2], [-width / 2, WORKPLANE_LINE_ELEVATION, depth / 2]);

@@ -59,6 +59,9 @@ describe("workplane settings helpers", () => {
     expect(normalizeWorkspaceSettings({ historyLimit: 9000 }).historyLimit).toBe(5000);
     expect(normalizeWorkspaceSettings({ historyLimit: "invalid" }).historyLimit).toBe(100);
     expect(normalizeWorkspaceSettings({ gridColor: "not-a-color" }).gridColor).toBe(DEFAULT_WORKPLANE_WORKSPACE.gridColor);
+    expect(normalizeWorkspaceSettings({ workplaneOpacity: 500 }).workplaneOpacity).toBe(100);
+    expect(normalizeWorkspaceSettings({ workplaneOpacity: 3 }).workplaneOpacity).toBe(10);
+    expect(normalizeWorkspaceSettings({ workplaneOpacity: "solid" }).workplaneOpacity).toBe(100);
   });
 
   it("keeps scale options in the selected unit family", () => {

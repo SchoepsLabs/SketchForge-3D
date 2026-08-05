@@ -331,6 +331,22 @@ export function WorkspaceSettingsModal({
                   </div>
                   <WorkspaceSelect label="Grid block size" value={workspace.gridBlockPreset} options={GRID_BLOCK_PRESETS} onChange={setGridBlockPreset} />
                   <GridColorControl color={gridColor} onChange={(nextGridColor) => patchWorkspace({ gridColor: nextGridColor })} />
+                  <label className="workspace-range">
+                    <span>Workplane opacity</span>
+                    <input
+                      type="range"
+                      min={10}
+                      max={100}
+                      step={5}
+                      value={workspace.workplaneOpacity}
+                      aria-valuetext={`${workspace.workplaneOpacity}%`}
+                      onChange={(event) => patchWorkspace({ workplaneOpacity: Number(event.currentTarget.value) })}
+                    />
+                    <small>
+                      <span>Faint</span>
+                      <span>{workspace.workplaneOpacity}%</span>
+                    </small>
+                  </label>
                   {workspace.gridBlockPreset === "Custom" ? (
                     <div className="workspace-dimensions workspace-grid-dimensions">
                       <label>
