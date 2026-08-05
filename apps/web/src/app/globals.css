@@ -7299,11 +7299,23 @@ html[data-theme="dark"] .grid-settings {
 
 .assistant-tool {
   display: flex;
-  gap: 6px;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 2px;
   font-family: ui-monospace, "SFMono-Regular", "Menlo", monospace;
   font-size: 11px;
   color: var(--muted-strong);
+}
+
+.assistant-tool-line {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.assistant-tool-failure {
+  margin: 0 0 2px 12px;
+  color: #b4534f;
+  overflow-wrap: anywhere;
 }
 
 .assistant-tool-dot {
@@ -7399,5 +7411,9 @@ html[data-theme="dark"] .assistant-message-user {
 }
 
 html[data-theme="dark"] .assistant-error {
+  color: #e79b95;
+}
+
+html[data-theme="dark"] .assistant-tool-failure {
   color: #e79b95;
 }

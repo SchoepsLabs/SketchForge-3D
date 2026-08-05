@@ -34,11 +34,15 @@ function toolStatusLabel(tool: AssistantToolEntry) {
 function ToolLine({ tool }: { tool: AssistantToolEntry }) {
   return (
     <li className={`assistant-tool assistant-tool-${tool.status}`}>
-      <span className="assistant-tool-dot" aria-hidden />
-      <span className="assistant-tool-summary" title={tool.result || tool.summary}>
-        {tool.summary}
-      </span>
-      <span className="assistant-tool-status">{toolStatusLabel(tool)}</span>
+      <div className="assistant-tool-line">
+        <span className="assistant-tool-dot" aria-hidden />
+        <span className="assistant-tool-summary" title={tool.result || tool.summary}>
+          {tool.summary}
+        </span>
+        <span className="assistant-tool-status">{toolStatusLabel(tool)}</span>
+      </div>
+      {/* A failed call is the one result worth reading without hovering. */}
+      {tool.status === "failed" && tool.result ? <p className="assistant-tool-failure">{tool.result}</p> : null}
     </li>
   );
 }
