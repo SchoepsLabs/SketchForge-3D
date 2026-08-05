@@ -7,6 +7,32 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 6, task 4 (iteration checkpoints + version selector)
+- Shipped: `lib/assistantCheckpoints.ts` (pure, 13 tests), a version `<select>` in the dock header,
+  and two callbacks in `SketchForgeEditor.tsx` — `readShapesForAssistant` (returns `shapesRef.current`)
+  and `restoreShapesForAssistant` (invalidates any edge-modifier session, then `commitShapes`).
+- The design decision that makes the acceptance criterion fall out for free: **a restore is not a
+  parallel history, it is a normal edit.** Restoring commits the snapshot through the editor's own
+  `commitShapes`, which appends a history entry like any other change — so "restore v1 then undo
+  returns to v3's state" is just undo doing its usual job, and manual edits made between iterations
+  stay in the same chain instead of being shadowed by a second stack.
+- Snapshots are taken *before* the turn and again in the `finally`, so a turn that was stopped or
+  errored halfway still records what it actually changed. A turn whose fingerprint is unchanged
+  (`projectShapesFingerprint`, reused from `editorHistory`) produces **no** version, which keeps
+  question-answering turns out of the dropdown — the list is design iterations, not chat messages.
+- Dropdown reads Current / v3 / v2 / v1 / Before v1, newest first, each iteration labelled with its
+  own prompt clipped to 48 chars. "Before v1" comes from the first checkpoint's before-state, so
+  there is always a way back to the scene as it was before the assistant touched it. Checkpoints
+  deliberately survive "New chat": they bookmark the scene, not the conversation.
+- Verified by unit tests over a three-iteration fixture (empty → box → two boxes → taller box), plus
+  typecheck and a live page load. **Not** click-verified in the browser for the same
+  browser-selection reason as task 2 — the restore path itself is one call into `commitShapes`, the
+  same function every toolbar action already uses.
+- typecheck + test (293) green.
+- Blocked: nothing.
+- Next: Block 6 task 5 — per-request scene summary in the system prompt so "make the cylinder as tall
+  as the box" resolves without a read-tool round trip.
+
 ## 2026-08-05 — Block 6, task 3 (tool round-trip through the bridge)
 - Shipped: mostly verification — the parsing (task 1) and the transcript rendering (task 2) already
   carried tool calls, so the code delta is one real gap the live check exposed: a **failed** call put
