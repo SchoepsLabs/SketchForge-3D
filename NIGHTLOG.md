@@ -7,6 +7,32 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 7, task 3 (save-to-shared flow + dock save tool)
+- Shipped: new `lib/sharedProjectSave.ts` (13 tests), named conflict reasons in
+  `api/shared-projects/route.ts`, an overwrite confirm bar in the editor, and
+  `sketchforge_save_project` over MCP. New `tests/unit/sharedProjectsRoute.test.ts` drives the real
+  route against a real temp directory (6 cases).
+- **The bug worth naming:** saving under a name that already existed was *impossible*. The client
+  always sent `If-None-Match: *`, and the route answered every 409 with "The shared project changed
+  after you opened it" — wrong for that case (nothing changed; the name is simply taken) and offering
+  no way forward. The route now distinguishes `name-taken` / `stale-revision` / `missing` / `locked` /
+  `disabled`, and only `name-taken` comes back with the revision an overwrite would have to match.
+- Flow now: first save is create-only → if the name is taken the editor **keeps the packaged bytes**
+  (so answering doesn't repackage the project) and shows a confirm bar → "Overwrite" re-sends with
+  `If-Match` against exactly the revision the server named. A stale revision still refuses, so a real
+  lost update is still impossible — there is a test for precisely that distinction.
+- `SKETCHFORGE_SHARED_PROJECTS_DIR` unset now says which variable to set and that the server must
+  restart, rather than "Shared project storage is disabled".
+- **Save-and-stay already worked** — the export panel only sets a notice and stays open. Checked
+  before writing anything; nothing to change. (Roadmap item satisfied by existing behaviour.)
+- Dock capability: `sketchforge_save_project` goes through the same path as the toolbar. It creates
+  by default and, on a collision, returns an error telling the assistant to ask the user and call
+  again with `overwrite: true` — the dock never silently replaces a part. `.skf` packaging is now one
+  helper (`packageSkfBytes`) shared by the export panel and the tool, instead of two copies.
+- typecheck + test (400) green.
+- Blocked: nothing.
+- Next: Block 7 task 4 — print handoff (STL into a watched outbox).
+
 ## 2026-08-05 — Block 7, task 2 (autosave / crash-proof scenes)
 - Shipped: new `lib/sceneDraft.ts` (pure, 12 tests) + `components/workplane/SceneDraftGuard.tsx`,
   mounted in the editor with one block of props. The scene autosaves to localStorage on a 1.2 s
