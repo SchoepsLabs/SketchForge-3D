@@ -61,6 +61,15 @@ import {
 } from "@/components/workplane/TransformOverlay";
 import type { AlignAxis, AlignHandleStatus, AlignTarget, GridSize, MeasurementAccuracy, ShapeAsset, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 import type { CadModifierEdge } from "@/lib/cadModifierTypes";
+import {
+  MOUSE_CONTROL_SCHEME_STORAGE_KEY,
+  type MouseControlScheme,
+  getActiveMouseControlScheme,
+  readStoredMouseControlScheme,
+  resolveMouseButtons,
+  setActiveMouseControlScheme,
+  storeMouseControlScheme,
+} from "@/lib/mouseControls";
 
 const WORKPLANE_WIDTH = 200;
 const WORKPLANE_DEPTH = 140;
@@ -2254,6 +2263,7 @@ export function WorkplaneViewport({
   const [rulerOverlay, setRulerOverlay] = useState<RulerOverlayState | null>(null);
   const [moveDimensionOverlay, setMoveDimensionOverlay] = useState<MoveDimensionOverlayState | null>(null);
   const [moveDimensionsEnabled, setMoveDimensionsEnabled] = useState(true);
+  const [mouseControlScheme, setMouseControlScheme] = useState<MouseControlScheme>("sketchforge");
   const hostRef = useRef<HTMLDivElement | null>(null);
   const threeRef = useRef<ThreeState | null>(null);
   const shapesRef = useRef(shapes);
@@ -2348,6 +2358,35 @@ export function WorkplaneViewport({
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
   }, [clearMoveDimensions]);
+
+  useEffect(() => {
+    const applyStoredScheme = () => {
+      const scheme = readStoredMouseControlScheme();
+      setActiveMouseControlScheme(scheme);
+      setMouseControlScheme(scheme);
+      const state = threeRef.current;
+      if (state) {
+        Object.assign(state.controls.mouseButtons, resolveMouseButtons(scheme));
+      }
+    };
+    const handleSchemeStorage = (event: StorageEvent) => {
+      if (event.key === MOUSE_CONTROL_SCHEME_STORAGE_KEY) {
+        applyStoredScheme();
+      }
+    };
+    applyStoredScheme();
+    window.addEventListener("storage", handleSchemeStorage);
+    return () => window.removeEventListener("storage", handleSchemeStorage);
+  }, []);
+
+  const changeMouseControlScheme = useCallback((scheme: MouseControlScheme) => {
+    setMouseControlScheme(scheme);
+    storeMouseControlScheme(scheme);
+    const state = threeRef.current;
+    if (state) {
+      Object.assign(state.controls.mouseButtons, resolveMouseButtons(scheme));
+    }
+  }, []);
 
   const changeMoveDimensionsEnabled = useCallback((enabled: boolean) => {
     moveDimensionsEnabledRef.current = enabled;
@@ -4931,9 +4970,11 @@ export function WorkplaneViewport({
           snap={snap}
           themePreference={themePreference}
           moveDimensionsEnabled={moveDimensionsEnabled}
+          mouseControlScheme={mouseControlScheme}
           onWorkspaceChange={setWorkspace}
           onSnapChange={setSnap}
           onThemePreferenceChange={onThemePreferenceChange}
+          onMouseControlSchemeChange={changeMouseControlScheme}
           onMoveDimensionsEnabledChange={changeMoveDimensionsEnabled}
           onMakeDefault={makeWorkspaceDefault}
           onClose={() => setSettingsOpen(false)}
@@ -4968,11 +5009,7 @@ function createThreeScene(host: HTMLDivElement): ThreeState {
   controls.panSpeed = 0.65;
   controls.screenSpacePanning = true;
   controls.zoomToCursor = true;
-  controls.mouseButtons = {
-    LEFT: null,
-    MIDDLE: THREE.MOUSE.PAN,
-    RIGHT: THREE.MOUSE.ROTATE,
-  };
+  controls.mouseButtons = { ...resolveMouseButtons(getActiveMouseControlScheme()) };
   controls.minDistance = 18;
   controls.maxDistance = 4200;
   controls.minZoom = 0.02;
@@ -5073,14 +5110,10 @@ function createThreeScene(host: HTMLDivElement): ThreeState {
     state.needsRender = true;
   };
   const configureSketchForgeMouseButtons = (event: PointerEvent) => {
-    controls.mouseButtons.LEFT = event.button === 0 && (event.ctrlKey || event.metaKey) ? THREE.MOUSE.PAN : null;
-    controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
-    controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+    Object.assign(controls.mouseButtons, resolveMouseButtons(getActiveMouseControlScheme(), event));
   };
   const resetSketchForgeMouseButtons = () => {
-    controls.mouseButtons.LEFT = null;
-    controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
-    controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+    Object.assign(controls.mouseButtons, resolveMouseButtons(getActiveMouseControlScheme()));
   };
   const preventContextMenu = (event: MouseEvent) => {
     event.preventDefault();

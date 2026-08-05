@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HexColorInput, HexColorPicker } from "react-colorful";
 import { APP_THEME_OPTIONS, type AppThemePreference } from "@/lib/appTheme";
+import { MOUSE_CONTROL_SCHEME_OPTIONS, normalizeMouseControlScheme, type MouseControlScheme } from "@/lib/mouseControls";
 import { normalizeScaleForUnits, parseMeasurementInput, scaleOptionsForUnits, WORKSPACE_UNIT_OPTIONS } from "@/lib/measurementUnits";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import type { GridSize, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
@@ -49,9 +50,11 @@ export function WorkspaceSettingsModal({
   snap,
   themePreference,
   moveDimensionsEnabled,
+  mouseControlScheme,
   onWorkspaceChange,
   onSnapChange,
   onThemePreferenceChange,
+  onMouseControlSchemeChange,
   onMoveDimensionsEnabledChange,
   onMakeDefault,
   onClose,
@@ -60,9 +63,11 @@ export function WorkspaceSettingsModal({
   snap: GridSize;
   themePreference: AppThemePreference;
   moveDimensionsEnabled: boolean;
+  mouseControlScheme: MouseControlScheme;
   onWorkspaceChange: (next: WorkspaceSettings) => void;
   onSnapChange: (next: GridSize) => void;
   onThemePreferenceChange?: (preference: AppThemePreference) => void;
+  onMouseControlSchemeChange: (scheme: MouseControlScheme) => void;
   onMoveDimensionsEnabledChange: (enabled: boolean) => void;
   onMakeDefault: () => void;
   onClose: () => void;
@@ -197,6 +202,23 @@ export function WorkspaceSettingsModal({
                     </select>
                   </label>
                   <p className="workspace-global-note">Theme applies across SketchForge and all projects.</p>
+                  <label className="workspace-select">
+                    <span>Mouse controls</span>
+                    <select
+                      value={mouseControlScheme}
+                      onChange={(event) => onMouseControlSchemeChange(normalizeMouseControlScheme(event.currentTarget.value))}
+                    >
+                      {MOUSE_CONTROL_SCHEME_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="workspace-global-note">
+                    {MOUSE_CONTROL_SCHEME_OPTIONS.find((option) => option.value === mouseControlScheme)?.summary}
+                    {" — left-drag always selects and moves shapes."}
+                  </p>
                   <WorkspaceToggle
                     label="Show movement dimensions"
                     checked={moveDimensionsEnabled}
