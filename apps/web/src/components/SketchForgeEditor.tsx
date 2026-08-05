@@ -35,6 +35,7 @@ import {
   ToolbarHomeIcon,
   ToolbarImportIcon,
   ToolbarIntersectionIcon,
+  ToolbarSplitIcon,
   ToolbarFilletIcon,
   ToolbarMirrorIcon,
   ToolbarPasteIcon,
@@ -8799,6 +8800,7 @@ export function SketchForgeEditor({
         canRedo={!projectInteractionActive && historyIndex < history.length - 1}
         canGroup={selectedShapes.length > 1 && selectedShapes.every((shape) => !shape.locked)}
         canIntersect={selectedShapes.some((shape) => !shape.locked && !shape.hole) && selectedShapes.some((shape) => !shape.locked && Boolean(shape.hole))}
+        canSeparateParts={canSeparateSelectedParts}
         canUngroup={selectedShapes.some((shape) => Boolean(shape.groupedShapes?.length))}
         hasClipboard={clipboard.length > 0 || systemClipboardSupported}
         hasSelection={hasSelection}
@@ -8839,6 +8841,7 @@ export function SketchForgeEditor({
         onCenterOnPlate={centerSelectedOnPlate}
         onGroup={groupSelected}
         onIntersect={intersectSelected}
+        onSeparateParts={separateSelectedParts}
         onFillet={() => edgeModifier?.kind === "fillet" ? cancelEdgeModifier() : startEdgeModifier("fillet")}
         onMirror={toggleMirrorMode}
         onPaste={pasteShape}
@@ -9102,6 +9105,7 @@ function SecondaryToolbar({
   edgeModifierKind,
   canGroup,
   canIntersect,
+  canSeparateParts,
   canRedo,
   canUngroup,
   canUndo,
@@ -9134,6 +9138,7 @@ function SecondaryToolbar({
   onCenterOnPlate,
   onGroup,
   onIntersect,
+  onSeparateParts,
   onFillet,
   onMirror,
   onPaste,
@@ -9154,6 +9159,7 @@ function SecondaryToolbar({
   edgeModifierKind: CadModifierKind | null;
   canGroup: boolean;
   canIntersect: boolean;
+  canSeparateParts: boolean;
   canRedo: boolean;
   canUngroup: boolean;
   canUndo: boolean;
@@ -9186,6 +9192,7 @@ function SecondaryToolbar({
   onCenterOnPlate: () => void;
   onGroup: () => void;
   onIntersect: () => void;
+  onSeparateParts: () => void;
   onFillet: () => void;
   onMirror: () => void;
   onPaste: () => void;
@@ -9307,6 +9314,7 @@ function SecondaryToolbar({
     { label: "Group", icon: ToolbarGroupIcon, action: onGroup, enabled: canGroup },
     { label: "Ungroup", icon: ToolbarUngroupIcon, action: onUngroup, enabled: canUngroup },
     { label: "Boolean Intersection", icon: ToolbarIntersectionIcon, action: onIntersect, enabled: canIntersect },
+    { label: "Split parts", icon: ToolbarSplitIcon, action: onSeparateParts, enabled: canSeparateParts },
   ];
   const modifyTools = [
     { label: "Align", icon: ToolbarAlignIcon, action: onAlign, enabled: canAlign, active: alignMode },

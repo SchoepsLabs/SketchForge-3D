@@ -140,6 +140,16 @@ export function ToolbarIntersectionIcon(props: IconProps) {
   );
 }
 
+export function ToolbarSplitIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <rect x="7" y="14" width="13" height="20" rx="2" fill="none" stroke="currentColor" strokeWidth="2.4" />
+      <rect x="28" y="14" width="13" height="20" rx="2" fill="none" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M24 9v30" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3.5 3" />
+    </svg>
+  );
+}
+
 export function ToolbarAlignIcon(props: IconProps) {
   return <ToolbarSpriteIcon rect={{ x: 97.3, y: 46.7, width: 29.1, height: 32.5 }} {...props} />;
 }
