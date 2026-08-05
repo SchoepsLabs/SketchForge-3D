@@ -111,6 +111,13 @@ import { placeSketchExtrusion } from "@/lib/sketchPlacement";
 import { readMcpEditorIdentity } from "@/lib/mcpEditorIdentity";
 import { clearActiveShapeDragAsset, serializeShapeDragAsset, setActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
 import {
+  applyTransformDelta,
+  isMemorisedDuplicateStep,
+  nextDuplicateStep,
+  shapePlacement,
+  type DuplicateReplay,
+} from "@/lib/patternShapes";
+import {
   SKETCHFORGE_MCP_POLL_MS,
   SKETCHFORGE_MCP_ROUTE,
   type SketchForgeMcpCommand,
@@ -5362,6 +5369,9 @@ export function SketchForgeEditor({
   const shapesRef = useRef(shapes);
   const projectAssetsRef = useRef(projectAssets);
   const selectedIdsRef = useRef(selectedIds);
+  // Smart duplicate: the copies the last Ctrl+D made, where they landed, and the
+  // step being replayed. Lives in a ref because it is a gesture, not UI state.
+  const duplicateReplayRef = useRef<DuplicateReplay | null>(null);
   const workspaceSettingsRef = useRef(workspaceSettings);
   const snapGridRef = useRef(snapGrid);
   const placementElevationRef = useRef(placementElevation);
@@ -6794,19 +6804,49 @@ export function SketchForgeEditor({
     );
   }, [commitShapes, hasSelection, selectedIds, shapes]);
 
+  /**
+   * Tinkercad-style smart duplicate: whatever you do to a copy is memorised, and
+   * every further Ctrl+D repeats it, so five evenly spaced parts are five
+   * keypresses. The replay only survives while the last copies are still the
+   * selection — touch anything else and the next duplicate is a plain one.
+   */
   const duplicateSelected = useCallback(() => {
     if (!hasSelection) {
       setNotice("Select a shape first");
       return;
     }
-    const duplicates = selectedShapes.map((shape) => ({
-      ...shape,
-      id: createLocalId(`${shape.id}-copy`),
-      x: Math.min(110, shape.x + 8),
-      z: Math.min(110, shape.z + 8),
-    }));
-    commitShapes([...shapes, ...duplicates], duplicates.map((shape) => shape.id), `Duplicated ${duplicates.length} shape${duplicates.length === 1 ? "" : "s"}`);
-  }, [commitShapes, hasSelection, selectedShapes, shapes]);
+
+    const { delta, replaying } = nextDuplicateStep(
+      duplicateReplayRef.current,
+      selectedShapes.map((shape) => ({ id: shape.id, placement: shapePlacement(shape) })),
+    );
+    const repeatedAMove = replaying && isMemorisedDuplicateStep(delta);
+
+    const duplicates = selectedShapes.map((shape) => {
+      const placed = applyTransformDelta(shape, delta);
+      return {
+        ...shape,
+        id: createLocalId(`${shape.id}-copy`),
+        ...placed,
+        // The historical plain duplicate kept copies on the plate; clamping a
+        // replayed step instead would pile every further copy on the same spot.
+        ...(replaying ? {} : { x: Math.min(110, placed.x), z: Math.min(110, placed.z) }),
+      };
+    });
+
+    duplicateReplayRef.current = {
+      copyIds: duplicates.map((shape) => shape.id),
+      sourcePlacements: new Map(duplicates.map((shape, index) => [shape.id, shapePlacement(selectedShapes[index])])),
+      delta,
+    };
+
+    const count = duplicates.length;
+    commitShapes(
+      [...shapes, ...duplicates],
+      duplicates.map((shape) => shape.id),
+      `Duplicated ${count} shape${count === 1 ? "" : "s"}${repeatedAMove ? " and repeated the last move" : ""}`,
+    );
+  }, [commitShapes, hasSelection, selectedIds, selectedShapes, shapes]);
 
   const copySelected = useCallback(() => {
     if (!hasSelection) {
