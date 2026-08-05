@@ -17,6 +17,7 @@ import {
 import { loadDesignProfile } from "@/lib/assistantDesignProfile";
 import type { AssistantEvent, AssistantRequest } from "@/lib/assistantProtocol";
 import { encodeAssistantEvent } from "@/lib/assistantProtocol";
+import { appendSessionLogTurn, sessionTurnFromEvents } from "@/lib/assistantSessionLog";
 import { buildAssistantSystemPrompt } from "@/lib/assistantSystemPrompt";
 import { rejectNonLocalRequest } from "@/lib/localRequestGuard";
 
@@ -135,9 +136,13 @@ export async function POST(request: Request) {
       let settled = false;
       let sawResult = false;
       let stderrText = "";
+      const startedAt = Date.now();
+      // Kept so the turn can be written to docs/assistant/SESSIONS.md when it ends.
+      const loggedEvents: AssistantEvent[] = [];
 
       const emit = (event: AssistantEvent) => {
         if (settled) return;
+        loggedEvents.push(event);
         controller.enqueue(encoder.encode(encodeAssistantEvent(event)));
       };
 
@@ -147,6 +152,17 @@ export async function POST(request: Request) {
         clearTimeout(timer);
         request.signal.removeEventListener("abort", onAbort);
         void rm(workDir, { recursive: true, force: true }).catch(() => undefined);
+        // Best-effort and after the fact: logging never blocks or breaks a turn.
+        void appendSessionLogTurn(
+          sessionTurnFromEvents({
+            events: loggedEvents,
+            prompt: message,
+            startedAt,
+            finishedAt: Date.now(),
+            editorNumber,
+            sessionId,
+          }),
+        );
         controller.close();
       };
 
