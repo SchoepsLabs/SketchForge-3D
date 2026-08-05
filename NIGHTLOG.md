@@ -7,6 +7,34 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 5, task 1 (ghost for the drag-and-drop path)
+- Shipped: new `lib/shapeDragPayload.ts` (8 tests) + `handleDragOver`/`clearDragGhost` in
+  `WorkplaneViewport.tsx`, with the drag source in `SketchForgeEditor.tsx` registering the asset.
+  Dragging Box from the panel now shows the same translucent ghost as click-to-place, face cruising
+  included, and the drop commits to the cruised face instead of re-picking flat.
+- **The DOM rule that dictates the whole design:** during `dragover` the browser is in *protected
+  mode* — `dataTransfer.getData()` returns `""`, only `dataTransfer.types` is readable. So the
+  viewport cannot learn what is being dragged until the drop, which is far too late to draw a ghost
+  that follows the cursor. Hence the module-level register in the new lib: the drag source parks the
+  asset there on `dragstart` and clears it on `dragend`; `isShapeDragTransfer(types)` is what the
+  dragover handler is allowed to check. Both sides live in one document and one JS context, so this
+  is a plain module variable, not state plumbing.
+- Moved `parseDroppedShapeAsset` and the `SHAPE_KINDS` set out of `WorkplaneViewport.tsx` into the new
+  lib on the way past — same logic, now unit tested (bad kind, non-boolean hole, non-JSON, missing
+  fields), and the viewport shrinks by ~50 lines.
+- Decisions: (a) gated on the existing `cruiseShapes` setting, the same toggle click-to-place uses, so
+  turning ghosts off restores today's drop-at-cursor behaviour exactly; (b) skipped entirely while a
+  click-to-place ghost is already armed, so the two never fight over `shapePreviewLayer`; (c) the
+  built base shape is cached per drag — `makeShapeFromAsset` builds text/gear geometry and dragover
+  fires continuously; (d) a `dragend` window listener clears the ghost, because a drag released
+  outside the viewport (or cancelled with Esc) fires no drop at all.
+- typecheck + test (312) green; page still serves.
+- Owed, same as the dock: not eyeballed in the browser this session (two Chromes connected, extension
+  needs a manual pick). The visible behaviour to confirm first: ghost appears on dragover, cruises
+  onto a face, Shift flips to the underside, and dragging out of the window leaves no stuck ghost.
+- Blocked: nothing.
+- Next: Block 5 task 2 — smart duplicate (Ctrl+D transform replay) in new `lib/patternShapes.ts`.
+
 ## 2026-08-05 — Block 6, task 5 (session context) — Block 6 complete
 - Shipped: `lib/assistantSceneContext.ts` (pure, 12 tests) + one more dock prop wired straight to the
   editor's existing `mcpSceneSnapshot`, so the summary is rebuilt from live state on **every**
