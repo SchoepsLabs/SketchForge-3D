@@ -7,6 +7,30 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Block 7, task 5 (assistant session log) — Block 7 complete
+- Shipped: new `lib/assistantSessionLog.ts` (12 tests) + a best-effort append in the assistant route.
+  Every dock turn now writes timestamp, duration, prompt, the tool calls it executed (failures
+  marked), and the reply into `docs/assistant/SESSIONS.md`, grouped under one heading per
+  conversation so a design session reads together.
+- Chronological (appended at the bottom) rather than NIGHTLOG's newest-first: this file is read by
+  tools as much as by people, and appending keeps the write cheap and atomic. One heading per session
+  id; later turns of the same conversation slot in under it.
+- **Best-effort by construction:** the append runs after the stream has finished and swallows every
+  error, so a logging failure can never take down a design conversation — there is a test asserting an
+  unwritable path returns `false` instead of throwing. Prompts are quoted line-by-line and clipped at
+  1200 chars, so neither a multi-line prompt nor a pasted novel can break the markdown.
+- Verified live: one dock turn produced the header, the `c26a590f · editor 84306` conversation
+  heading, and the entry. That first real entry is what got committed. The reply also happened to
+  confirm task 1 again — it answered "1.86–2.5 mm … versus 1.24 mm as the structural minimum",
+  straight out of the H2D profile.
+- Worth flagging for later: this file will churn on every dock use. It is committed because the
+  roadmap wants overnight runs and the desktop Claude to read it, but if the churn gets annoying the
+  fix is to gitignore it and point `SKETCHFORGE_ASSISTANT_LOG` somewhere outside the repo — the env
+  override already exists for exactly that.
+- typecheck + test (426) green.
+- Blocked: nothing. **Block 7 is complete** (all five tasks).
+- Next: Block 1 leftovers — distribute evenly, then the two performance baselines.
+
 ## 2026-08-05 — Block 7, task 4 (print handoff)
 - Shipped: new `lib/printOutbox.ts` + `app/api/print-outbox/route.ts` (14 tests), a "Send to print"
   toolbar button in the Arrange group with a new inline SVG icon, and `sketchforge_send_to_print`

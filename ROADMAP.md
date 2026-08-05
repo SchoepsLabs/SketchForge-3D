@@ -229,25 +229,25 @@ fallback if `ANTHROPIC_API_KEY` is ever set.
 Goal: the dock stops being a generic CAD operator and becomes Marty's shop assistant, and
 work done in the editor stops being ephemeral.
 
-- [ ] **H2D shop knowledge in the dock** — `docs/assistant/H2D_DESIGN_PROFILE.md` (already
+- [x] **H2D shop knowledge in the dock** — `docs/assistant/H2D_DESIGN_PROFILE.md` (already
       written) gets appended to the assistant system prompt alongside the scene summary.
       *Accept:* "add a mounting plate with M3 holes" produces Ø3.4 holes and ≥1.24 walls
       without being told; asking for a mating sleeve prompts for the measured bore or offers
       a gauge, never guesses.
-- [ ] **Autosave / crash-proof scenes** — the ephemeral editor loses everything on reload
+- [x] **Autosave / crash-proof scenes** — the ephemeral editor loses everything on reload
       (the M3 spacer vanished this way). Autosave the working scene to localStorage or a
       draft `.skf` every N commits of history, restore-on-load with a "resume draft?" notice.
       *Accept:* kill the tab mid-design, reopen, scene comes back.
-- [ ] **Save-to-shared flow** (pulled forward from Block 3) — smooth `.skf` save into the
+- [x] **Save-to-shared flow** (pulled forward from Block 3) — smooth `.skf` save into the
       mounted `lumera-sketchforge-parts` library: overwrite confirmation, clear error when
       `SKETCHFORGE_SHARED_PROJECTS_DIR` unset, save-and-stay. The dock gets a
       `save the project as <name>` capability through the same path.
       *Accept:* saving twice never silently duplicates or clobbers; dock can save by name.
-- [ ] **Print handoff** — one action (toolbar + dock tool) that exports the scene/selection
+- [x] **Print handoff** — one action (toolbar + dock tool) that exports the scene/selection
       as STL into a configurable watched folder (default: the shared parts library's
       `outbox/`), named `<project>-<date>.stl`, ready for Bambu Studio.
       *Accept:* "send it to print" in the dock lands an STL in the outbox with sane naming.
-- [ ] **Assistant session log** — append each dock conversation (prompt, tool calls, result)
+- [x] **Assistant session log** — append each dock conversation (prompt, tool calls, result)
       to `NIGHTLOG-style docs/assistant/SESSIONS.md` so overnight runs and the desktop
       Claude can see what was designed in the dock and why.
       *Accept:* log entry per conversation with timestamp, prompts, and executed actions.
