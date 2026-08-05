@@ -14,6 +14,7 @@ import {
   CLAUDE_CLI_MISSING_HINT,
   CLAUDE_CLI_MISSING_MESSAGE,
 } from "@/lib/assistantCli";
+import { loadDesignProfile } from "@/lib/assistantDesignProfile";
 import type { AssistantEvent, AssistantRequest } from "@/lib/assistantProtocol";
 import { encodeAssistantEvent } from "@/lib/assistantProtocol";
 import { buildAssistantSystemPrompt } from "@/lib/assistantSystemPrompt";
@@ -113,7 +114,9 @@ export async function POST(request: Request) {
   const mcpConfigPath = path.join(workDir, "mcp-config.json");
   const systemPromptPath = path.join(workDir, "system-prompt.txt");
   await writeFile(mcpConfigPath, JSON.stringify(assistantMcpConfig({ serverScriptPath, baseUrl }), null, 2), "utf8");
-  await writeFile(systemPromptPath, buildAssistantSystemPrompt({ editorNumber, sceneContext }), "utf8");
+  // Reloaded per request, so editing the profile markdown changes the next reply.
+  const designProfile = loadDesignProfile();
+  await writeFile(systemPromptPath, buildAssistantSystemPrompt({ editorNumber, sceneContext, designProfile }), "utf8");
 
   const cli = resolveAssistantCliCommand({ override: process.env.SKETCHFORGE_CLAUDE_BIN });
   const args = buildAssistantCliArgs({

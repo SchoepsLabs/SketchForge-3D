@@ -9,9 +9,15 @@
 export type AssistantSystemPromptOptions = {
   editorNumber?: number | null;
   sceneContext?: string | null;
+  /** Shop knowledge from docs/assistant/H2D_DESIGN_PROFILE.md, loaded per request. */
+  designProfile?: string | null;
 };
 
-export function buildAssistantSystemPrompt({ editorNumber = null, sceneContext = null }: AssistantSystemPromptOptions = {}) {
+export function buildAssistantSystemPrompt({
+  editorNumber = null,
+  sceneContext = null,
+  designProfile = null,
+}: AssistantSystemPromptOptions = {}) {
   const sections: string[] = [
     [
       "You are the design assistant embedded in the SketchForge 3D editor, answering inside a chat dock",
@@ -35,6 +41,19 @@ export function buildAssistantSystemPrompt({ editorNumber = null, sceneContext =
   } else {
     sections.push(
       "No editor number was supplied. Call sketchforge_list_editors first and use the single open editor; if several are open, ask which one before changing anything.",
+    );
+  }
+
+  const trimmedProfile = designProfile?.trim();
+  if (trimmedProfile) {
+    // Before the scene summary on purpose: these are standing constraints on
+    // every dimension the assistant chooses, not facts about the current plate.
+    sections.push(
+      [
+        "Shop profile for this machine and workshop. Apply it silently to every dimension you choose,",
+        "and mention only the rules that actually changed the design. Where it says to ask for a measured",
+        "dimension rather than guess, ask.",
+      ].join(" ") + `\n\n${trimmedProfile}`,
     );
   }
 
