@@ -114,6 +114,7 @@ import { placeSketchExtrusion } from "@/lib/sketchPlacement";
 import { readMcpEditorIdentity } from "@/lib/mcpEditorIdentity";
 import { clearActiveShapeDragAsset, serializeShapeDragAsset, setActiveShapeDragAsset, SHAPE_DRAG_MIME } from "@/lib/shapeDragPayload";
 import { buildWorkplaneContextMenuItems } from "@/lib/workplaneContextMenu";
+import { isMacPlatform, toolbarTooltip, type ShortcutHintId } from "@/lib/shortcutHints";
 import {
   applyTransformDelta,
   isMemorisedDuplicateStep,
@@ -9363,6 +9364,12 @@ function SecondaryToolbar({
   const [shapesOpen, setShapesOpen] = useState(false);
   const [sketchCreateOpen, setSketchCreateOpen] = useState(false);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
+  // Read after mount: the server render has no navigator, and a tooltip that
+  // differs between server and client HTML is a hydration mismatch.
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => {
+    setIsMac(isMacPlatform(typeof navigator === "undefined" ? "" : navigator.platform || navigator.userAgent));
+  }, []);
   const [visibilityMenuPosition, setVisibilityMenuPosition] = useState({ top: 0, left: 0 });
   const sketchCreateMenuRef = useRef<HTMLDivElement>(null);
   const visibilityMenuRef = useRef<HTMLDivElement>(null);
@@ -9447,17 +9454,18 @@ function SecondaryToolbar({
     setVisibilityOpen(true);
   };
   const leftTools = [
-    { label: "Copy", icon: ToolbarCopyIcon, action: onCopy, enabled: hasSelection },
-    { label: "Paste", icon: ToolbarPasteIcon, action: onPaste, enabled: hasClipboard },
-    { label: "Duplicate", icon: ToolbarDuplicateIcon, action: onDuplicate, enabled: hasSelection },
-    { label: "Delete", icon: ToolbarTrashIcon, action: onDelete, enabled: hasSelection },
-    { label: "Undo", icon: ToolbarUndoIcon, action: onUndo, enabled: canUndo },
-    { label: "Redo", icon: ToolbarRedoIcon, action: onRedo, enabled: canRedo },
+    { label: "Copy", icon: ToolbarCopyIcon, action: onCopy, enabled: hasSelection, shortcut: "copy" as const },
+    { label: "Paste", icon: ToolbarPasteIcon, action: onPaste, enabled: hasClipboard, shortcut: "paste" as const },
+    { label: "Duplicate", icon: ToolbarDuplicateIcon, action: onDuplicate, enabled: hasSelection, shortcut: "duplicate" as const },
+    { label: "Delete", icon: ToolbarTrashIcon, action: onDelete, enabled: hasSelection, shortcut: "delete" as const },
+    { label: "Undo", icon: ToolbarUndoIcon, action: onUndo, enabled: canUndo, shortcut: "undo" as const },
+    { label: "Redo", icon: ToolbarRedoIcon, action: onRedo, enabled: canRedo, shortcut: "redo" as const },
   ];
   const visibilityTools = [
     {
       label: selectionHidden ? "Show selected" : "Hide selected",
       icon: ToolbarHideSelectedIcon,
+      shortcut: "hide" as const,
       action: () => {
         setVisibilityOpen(false);
         onToggleHidden();
@@ -9466,29 +9474,32 @@ function SecondaryToolbar({
     },
   ];
   const combineTools = [
-    { label: "Group", icon: ToolbarGroupIcon, action: onGroup, enabled: canGroup },
-    { label: "Ungroup", icon: ToolbarUngroupIcon, action: onUngroup, enabled: canUngroup },
+    { label: "Group", icon: ToolbarGroupIcon, action: onGroup, enabled: canGroup, shortcut: "group" as const },
+    { label: "Ungroup", icon: ToolbarUngroupIcon, action: onUngroup, enabled: canUngroup, shortcut: "ungroup" as const },
     { label: "Boolean Intersection", icon: ToolbarIntersectionIcon, action: onIntersect, enabled: canIntersect },
     { label: "Split parts", icon: ToolbarSplitIcon, action: onSeparateParts, enabled: canSeparateParts },
   ];
   const modifyTools = [
-    { label: "Align", icon: ToolbarAlignIcon, action: onAlign, enabled: canAlign, active: alignMode },
-    { label: "Mirror", icon: ToolbarMirrorIcon, action: onMirror, enabled: hasSelection, active: mirrorMode },
+    { label: "Align", icon: ToolbarAlignIcon, action: onAlign, enabled: canAlign, active: alignMode, shortcut: "align" as const },
+    { label: "Mirror", icon: ToolbarMirrorIcon, action: onMirror, enabled: hasSelection, active: mirrorMode, shortcut: "mirror" as const },
     { label: "Snap to grid", icon: ToolbarSnapGridIcon, action: onSnap, enabled: hasSelection },
     { label: "Chamfer", icon: ToolbarChamferIcon, action: onChamfer, enabled: canEdgeModify, active: edgeModifierKind === "chamfer" },
     { label: "Fillet", icon: ToolbarFilletIcon, action: onFillet, enabled: canEdgeModify, active: edgeModifierKind === "fillet" },
-    { label: selectionIsHole ? "Make solid" : "Make hole", icon: ToolbarHoleIcon, action: onToggleHole, enabled: canToggleHole, active: selectionIsHole },
-    { label: selectionLocked ? "Unlock" : "Lock", icon: ToolbarLockIcon, action: onToggleLock, enabled: hasSelection, active: selectionLocked },
+    { label: selectionIsHole ? "Make solid" : "Make hole", icon: ToolbarHoleIcon, action: onToggleHole, enabled: canToggleHole, active: selectionIsHole, shortcut: (selectionIsHole ? "solid" : "hole") as ShortcutHintId },
+    { label: selectionLocked ? "Unlock" : "Lock", icon: ToolbarLockIcon, action: onToggleLock, enabled: hasSelection, active: selectionLocked, shortcut: "lock" as const },
   ];
   const arrangeTools = [
-    { label: "Drop to workplane", icon: ToolbarDropToWorkplaneIcon, action: onDropToWorkplane, enabled: hasSelection },
+    { label: "Drop to workplane", icon: ToolbarDropToWorkplaneIcon, action: onDropToWorkplane, enabled: hasSelection, shortcut: "dropToWorkplane" as const },
     { label: "Center on plate", icon: ToolbarCenterOnWorkplaneIcon, action: onCenterOnPlate, enabled: hasSelection },
   ];
   const renderToolButton = (tool: (typeof leftTools)[number] | (typeof visibilityTools)[number] | (typeof combineTools)[number] | (typeof modifyTools)[number] | (typeof arrangeTools)[number]) => {
     const { icon: Icon, action, enabled, label } = tool;
     const active = "active" in tool && Boolean(tool.active);
+    // Tooltip text comes from lib/shortcutHints.ts, the same table
+    // docs/SHORTCUTS.md is checked against, so the key is never typed twice.
+    const title = toolbarTooltip(label, "shortcut" in tool ? tool.shortcut : null, { mac: isMac });
     return (
-      <button className={`toolbar-icon ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} key={label} aria-label={label} title={label} onClick={action} disabled={!enabled}>
+      <button className={`toolbar-icon ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} key={label} aria-label={title} title={title} onClick={action} disabled={!enabled}>
         <Icon />
       </button>
     );
