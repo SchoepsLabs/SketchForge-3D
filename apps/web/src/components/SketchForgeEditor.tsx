@@ -49,6 +49,7 @@ import {
   ToolbarVectorExportIcon,
 } from "./icons";
 import { WorkplaneViewport } from "./WorkplaneViewport";
+import { AssistantDock } from "./assistant/AssistantDock";
 import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "./SketchWorkspace";
 import { EdgeModifierPanel } from "./workplane/EdgeModifierPanel";
 import {
@@ -107,6 +108,7 @@ import {
   type PlacementWorkplane,
 } from "@/lib/placementWorkplane";
 import { placeSketchExtrusion } from "@/lib/sketchPlacement";
+import { readMcpEditorIdentity } from "@/lib/mcpEditorIdentity";
 import {
   SKETCHFORGE_MCP_POLL_MS,
   SKETCHFORGE_MCP_ROUTE,
@@ -5237,30 +5239,6 @@ function mcpFiniteNumberArray(value: unknown): number[] {
   return Array.isArray(value) ? value.filter((entry): entry is number => typeof entry === "number" && Number.isFinite(entry)) : [];
 }
 
-function readMcpEditorIdentity() {
-  const storageKey = "sketchforge.mcp.editorIdentity";
-  try {
-    const existing = JSON.parse(window.sessionStorage.getItem(storageKey) ?? "null") as { editorId?: unknown; editorNumber?: unknown } | null;
-    if (typeof existing?.editorId === "string" && typeof existing.editorNumber === "number") {
-      return { editorId: existing.editorId, editorNumber: existing.editorNumber };
-    }
-  } catch {
-    // Session identity is best-effort; fall through and create a new one.
-  }
-
-  const randomValues = new Uint32Array(1);
-  window.crypto?.getRandomValues?.(randomValues);
-  const editorNumber = 10000 + ((randomValues[0] || Math.floor(Math.random() * 90000)) % 90000);
-  const editorId = window.crypto?.randomUUID?.() ?? `sketchforge-editor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const identity = { editorId, editorNumber };
-  try {
-    window.sessionStorage.setItem(storageKey, JSON.stringify(identity));
-  } catch {
-    // Private browsing can block sessionStorage; the in-memory identity is enough for this tab.
-  }
-  return identity;
-}
-
 export function SketchForgeEditor({
   initialAssets = [],
   initialShapes = [],
@@ -8976,6 +8954,7 @@ export function SketchForgeEditor({
           onThemePreferenceChange={onThemePreferenceChange}
           />
         )}
+        <AssistantDock />
       </div>
       {edgeModifier ? (
         <EdgeModifierPanel

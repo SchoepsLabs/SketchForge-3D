@@ -7131,3 +7131,273 @@ html[data-theme="dark"] .cube-face:focus-visible {
 html[data-theme="dark"] .grid-settings {
   color: #a9bdca;
 }
+
+/* ---- Claude chat dock (Block 6) ------------------------------------------ */
+/* Flex sibling of the viewport stage inside .editor-body, so it takes width
+   from the viewport instead of covering the shape inspector. Colours come from
+   the theme variables, so light and dark both work without a second ruleset. */
+
+.assistant-dock {
+  position: relative;
+  z-index: 9;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  width: 340px;
+  min-width: 0;
+  height: calc(100vh - var(--editor-toolbar-height));
+  color: var(--foreground);
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  box-shadow: -2px 0 10px rgba(36, 61, 86, 0.08);
+}
+
+.assistant-dock.collapsed {
+  width: 34px;
+  background: var(--subbar);
+}
+
+.assistant-dock-tab {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0;
+  color: var(--muted-strong);
+  cursor: pointer;
+  background: transparent;
+}
+
+.assistant-dock-tab:hover {
+  color: var(--primary);
+  background: var(--tile-hover);
+}
+
+.assistant-dock-tab-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.assistant-dock-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  height: 50px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.assistant-dock-header strong {
+  font-size: 14px;
+}
+
+.assistant-dock-header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.assistant-dock-button {
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--muted-strong);
+  cursor: pointer;
+  background: transparent;
+  border-radius: 5px;
+}
+
+.assistant-dock-button:hover:not(:disabled) {
+  color: var(--foreground);
+  background: var(--tile-hover);
+}
+
+.assistant-dock-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.assistant-transcript {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.assistant-empty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-strong);
+}
+
+.assistant-message {
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  border-radius: 8px;
+}
+
+.assistant-message-user {
+  align-self: flex-end;
+  max-width: 92%;
+  color: #ffffff;
+  background: var(--primary);
+}
+
+.assistant-message-reply {
+  background: var(--tile);
+  border: 1px solid var(--border);
+}
+
+.assistant-message-error {
+  border-color: #d98a8a;
+}
+
+.assistant-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.assistant-thinking {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+
+.assistant-error {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #b4534f;
+}
+
+.assistant-error-hint {
+  color: var(--muted-strong);
+}
+
+.assistant-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.assistant-tool {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-family: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+  font-size: 11px;
+  color: var(--muted-strong);
+}
+
+.assistant-tool-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  background: var(--muted);
+  border-radius: 50%;
+}
+
+.assistant-tool-ok .assistant-tool-dot {
+  background: #46b07a;
+}
+
+.assistant-tool-failed .assistant-tool-dot {
+  background: #cf6a63;
+}
+
+.assistant-tool-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-tool-status {
+  flex: 0 0 auto;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.assistant-composer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.assistant-input {
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--foreground);
+  resize: none;
+  background: var(--tile-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.assistant-input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.assistant-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.assistant-hint {
+  font-size: 11px;
+  color: var(--muted-strong);
+}
+
+.assistant-send {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  background: var(--primary);
+  border-radius: 6px;
+}
+
+.assistant-send:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+@media (max-width: 1100px) {
+  .assistant-dock {
+    width: 300px;
+  }
+}
+
+html[data-theme="dark"] .assistant-message-user {
+  color: #06212c;
+}
+
+html[data-theme="dark"] .assistant-error {
+  color: #e79b95;
+}
