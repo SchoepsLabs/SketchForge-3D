@@ -34,7 +34,10 @@ import { rejectNonLocalRequest } from "@/lib/localRequestGuard";
  */
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// `revalidate = false`, not `dynamic = "force-dynamic"`: the latter is rejected
+// outright by `output: export` (npm run export), and a streaming POST handler is
+// already uncacheable without it. Matches the other API routes here.
+export const revalidate = false;
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 20000;

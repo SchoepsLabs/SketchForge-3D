@@ -40,21 +40,33 @@ Command: `ls -S apps/web/.next/static/chunks/*.js`
 | **manifold** (booleans, group/cut) | 527 KB wasm + 80 KB js | **Eager.** Both generated modules are static `import`s at the top of `SketchForgeEditor.tsx` (lines 19–20), so they are in the route's first-load JS whether or not the user ever performs a boolean. |
 | **OCCT** (STEP import/export, chamfer/fillet) | 21.1 MB wasm in `public/occt/` | **On demand.** Served as a static asset and fetched by the worker only when a STEP or CAD-modifier operation runs. It never touches the JS bundle. |
 
-### Deferral candidate (one, concrete)
+### Deferral candidate — attempted 2026-08-05, NOT as simple as it looks
 
-Move `manifoldWasmBase64` and `manifoldModuleSource` behind a dynamic `import()` inside
-`getManifoldRuntime()` — the function that already exists and is only called when a boolean
-is first needed.
+The obvious idea is to stop shipping `manifoldWasmBase64` (719 KB) and
+`manifoldModuleSource` (80 KB) in server builds, since only the `file:` branch of
+`getManifoldRuntime()` reads them and that branch exists purely for the static export.
+An attempt was made and **reverted**; record of what was learned, so the next attempt
+starts further along:
 
-- **Estimated saving: ~800 KB of the 1.24 MB route JS (~65%)**, taken off every first load.
-- The cost lands instead on the first group/cut, where the measurements below say it is
-  cheap: instantiating the WASM takes **12 ms** and the first boolean **17 ms**, so the user
-  would pay a one-off network fetch of ~530 KB and ~30 ms of CPU at the moment they first
-  combine two shapes.
-- OCCT already demonstrates the pattern works in this codebase — that 21.1 MB is *not* in the
-  bundle precisely because it is fetched on use.
+- **`resolve.alias` on `"@/generated/..."` does nothing.** Next resolves the `@` path
+  mapping itself, so an alias keyed on that request is never consulted. The bundle came
+  out byte-identical.
+- **`NormalModuleReplacementPlugin` matching the resolved path did not remove the bytes
+  either.** After it, `next build` reported the editor route dropping 1.25 MB → 948 kB,
+  which *looked* like success — but a recursive search of the whole build output found the
+  base64 still present, in `static/chunks/app/page-<hash>.js`, with the same content hash
+  as the static export's copy. The route "Size" column moved for some other reason; it is
+  not a reliable proxy for "these bytes are gone".
+- **Measurement lesson, the expensive one:** verify a payload claim by searching the build
+  output *recursively* for a substring of the actual payload. A flat scan of
+  `static/chunks/*.js` misses `chunks/app/`, and Next's route-size column can move without
+  the module graph changing the way you think.
 
-Not done here: the fix is its own task, and it lands inside `SketchForgeEditor.tsx`.
+So the saving is still on the table — the editor route is still ~1.25 MB and manifold is
+still statically imported — but it needs someone to find where that chunk is really
+assembled, and to confirm the static export keeps its inlined copy afterwards (a server
+build and an export must be checked separately; only the export can afford to lose the
+fetchable assets).
 
 ## Large models and the boolean path
 
@@ -98,5 +110,12 @@ structured-clone or binary mesh encoding would avoid the JSON round trip.
 
 ```
 npm run build     # first-load numbers (route table + chunk sizes)
+npm run export    # the static-export build - NOT covered by `npm run ci`
 npm run perf      # the timing table above
 ```
+
+`npm run export` deserves its place in that list: on 2026-08-05 the assistant route shipped
+with `export const dynamic = "force-dynamic"`, which `output: export` rejects outright, and
+nothing caught it because `npm run ci` is only typecheck + test. The route now uses
+`revalidate = false` like every other API route here. If you add an API route, run the
+export once.
