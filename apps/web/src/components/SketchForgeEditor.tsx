@@ -9767,7 +9767,8 @@ function SecondaryToolbar({
                     className="shape-menu-item"
                     key={shape.id}
                     type="button"
-                    draggable={false}
+                    title={`${shape.name} — drag onto the plate, or click to place`}
+                    draggable
                     onClick={() => {
                       if (suppressNextShapeClickRef.current) {
                         suppressNextShapeClickRef.current = false;
@@ -9830,6 +9831,7 @@ function SecondaryToolbar({
                   </button>
                 ))}
               </div>
+              <div className="shape-menu-hint">Drag onto the plate, or click to place</div>
             </div>
           ) : null}
         </div>

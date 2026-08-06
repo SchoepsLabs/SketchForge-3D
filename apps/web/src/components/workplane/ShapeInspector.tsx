@@ -21,7 +21,7 @@ import {
   normalizeGearType,
   gearToothPitch,
 } from "@/lib/gearGeometry";
-import { displayStepFromMillimeters, displayToMillimeters, formatMeasurementNumber, lengthDisplayUnit, millimetersToDisplay, parseMeasurementInput } from "@/lib/measurementUnits";
+import { displayStepFromMillimeters, displayToMillimeters, formatMeasurementNumber, lengthDisplayUnit, millimetersToDisplay, parseMeasurementExpression, parseMeasurementInput } from "@/lib/measurementUnits";
 import { resizedShapeSize, shapeDepth, shapeWidth } from "@/lib/workplaneShapes";
 import { normalizeSketchRevolveSettings } from "@/lib/sketchRevolve";
 import type { GearType, GridSize, MeasurementAccuracy, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
@@ -651,12 +651,20 @@ function RangeProperty({
   }, [accuracy, controlStep, controlValue, editing]);
   const toModelValue = (nextValue: number) => isLength ? displayToMillimeters(nextValue, workspace) : nextValue;
   const commitDraft = () => {
-    const next = parseMeasurementInput(draft);
+    const expression = parseMeasurementExpression(draft);
+    const next = Number.isFinite(expression) ? expression : parseMeasurementInput(draft);
     const finiteNext = Number.isFinite(next) ? next : controlValue;
     const nextModelValue = toModelValue(finiteNext);
     onChange(allowsAboveSliderMax ? Math.max(min, nextModelValue) : clamp(nextModelValue, min, max));
     setEditing(false);
     onInteractionActiveChange?.(false);
+  };
+  const nudgeBy = (direction: 1 | -1, coarse: boolean) => {
+    const increment = controlStep * (coarse ? 10 : 1) * direction;
+    const nextControlValue = controlValue + increment;
+    const nextModelValue = toModelValue(nextControlValue);
+    onChange(allowsAboveSliderMax ? Math.max(min, nextModelValue) : clamp(nextModelValue, min, max));
+    setDraft(formatPropertyNumber(nextControlValue, accuracy, controlStep));
   };
   const handleSliderChange = (nextValue: number) => {
     const next = clamp(Number.isFinite(nextValue) ? nextValue : controlMin, controlMin, controlMax);
@@ -686,28 +694,33 @@ function RangeProperty({
               } else if (event.key === "Escape") {
                 setDraft(formatPropertyNumber(controlValue, accuracy, controlStep));
                 setEditing(false);
+              } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                event.preventDefault();
+                nudgeBy(event.key === "ArrowUp" ? 1 : -1, event.shiftKey);
               }
             }}
           />
           {unit ? <span className="range-value-unit">{unit}</span> : null}
         </span>
       </span>
-      <div className="range-control">
-        <input
-          type="range"
-          min={controlMin}
-          max={controlMax}
-          step={controlStep}
-          value={sliderValue}
-          disabled={disabled}
-          onFocus={() => onInteractionActiveChange?.(true)}
-          onBlur={() => onInteractionActiveChange?.(false)}
-          onPointerDown={() => onInteractionActiveChange?.(true)}
-          onPointerUp={() => onInteractionActiveChange?.(false)}
-          onPointerCancel={() => onInteractionActiveChange?.(false)}
-          onChange={(event) => handleSliderChange(Number(event.currentTarget.value))}
-        />
-      </div>
+      {allowsAboveSliderMax ? null : (
+        <div className="range-control">
+          <input
+            type="range"
+            min={controlMin}
+            max={controlMax}
+            step={controlStep}
+            value={sliderValue}
+            disabled={disabled}
+            onFocus={() => onInteractionActiveChange?.(true)}
+            onBlur={() => onInteractionActiveChange?.(false)}
+            onPointerDown={() => onInteractionActiveChange?.(true)}
+            onPointerUp={() => onInteractionActiveChange?.(false)}
+            onPointerCancel={() => onInteractionActiveChange?.(false)}
+            onChange={(event) => handleSliderChange(Number(event.currentTarget.value))}
+          />
+        </div>
+      )}
     </label>
   );
 }

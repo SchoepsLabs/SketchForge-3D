@@ -75,6 +75,77 @@ export function displayStepFromMillimeters(step: number, workspace: Pick<Workpla
   return step / lengthDisplayUnit(workspace).millimetersPerUnit;
 }
 
+/**
+ * Evaluates a small arithmetic expression so dimension fields accept things like
+ * "20/3", "1.5+0.2" or "(40-4)/2" instead of forcing a calculator detour.
+ *
+ * Recursive descent over + - * / and parentheses, no eval. Anything that is not a
+ * well-formed expression returns NaN so callers can fall back to
+ * `parseMeasurementInput` and keep the old plain-number behaviour.
+ */
+export function parseMeasurementExpression(value: string): number {
+  const src = value.trim().replace(/[\s ]/g, "");
+  if (!src || !/^[0-9.,+\-*/()]+$/.test(src)) return Number.NaN;
+  if (!/[+\-*/]/.test(src.slice(1))) return Number.NaN;
+
+  let at = 0;
+  const peek = () => src[at];
+
+  const parseNumber = (): number => {
+    const start = at;
+    while (at < src.length && /[0-9.,]/.test(src[at])) at += 1;
+    if (at === start) return Number.NaN;
+    return parseMeasurementInput(src.slice(start, at));
+  };
+
+  const parseFactor = (): number => {
+    if (peek() === "+") {
+      at += 1;
+      return parseFactor();
+    }
+    if (peek() === "-") {
+      at += 1;
+      return -parseFactor();
+    }
+    if (peek() === "(") {
+      at += 1;
+      const inner = parseSum();
+      if (peek() !== ")") return Number.NaN;
+      at += 1;
+      return inner;
+    }
+    return parseNumber();
+  };
+
+  const parseProduct = (): number => {
+    let acc = parseFactor();
+    while (peek() === "*" || peek() === "/") {
+      const op = src[at];
+      at += 1;
+      const rhs = parseFactor();
+      if (!Number.isFinite(acc) || !Number.isFinite(rhs)) return Number.NaN;
+      if (op === "/" && rhs === 0) return Number.NaN;
+      acc = op === "*" ? acc * rhs : acc / rhs;
+    }
+    return acc;
+  };
+
+  function parseSum(): number {
+    let acc = parseProduct();
+    while (peek() === "+" || peek() === "-") {
+      const op = src[at];
+      at += 1;
+      const rhs = parseProduct();
+      if (!Number.isFinite(acc) || !Number.isFinite(rhs)) return Number.NaN;
+      acc = op === "+" ? acc + rhs : acc - rhs;
+    }
+    return acc;
+  }
+
+  const result = parseSum();
+  return at === src.length && Number.isFinite(result) ? result : Number.NaN;
+}
+
 export function parseMeasurementInput(value: string | number) {
   if (typeof value === "number") return Number.isFinite(value) ? value : Number.NaN;
   const compact = value.trim().replace(/[\s\u00a0]/g, "");

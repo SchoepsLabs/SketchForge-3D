@@ -7,6 +7,50 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-06 — Live session (Cowork): UI redesign block 2, placement + dimension feel
+- Mapped the placement/gizmo code before touching it. Most of the "Tinkercad feel" was
+  **already built and switched off**, which changes the plan considerably:
+  - `lib/shapeDragPayload.ts` (MIME, serialize/parse, module-level asset register),
+    `handleDragOver`/`handleDrop` on the canvas host (`WorkplaneViewport.tsx` 4569/4603),
+    and the ghost renderer `syncShapePlacementGhost` (5594) were all complete — but the
+    menu buttons carried `draggable={false}` (`SketchForgeEditor.tsx` 9770), so the entire
+    drag path was dead. Almost certainly a leftover from the touch-tap emulation work.
+  - Click-to-place ("cruise") with a translucent ghost already exists and defaults on.
+  - On-canvas editable dimension badges already exist in two systems: `TransformOverlay.tsx`
+    150–181 (resize/height, click-to-type) and `MoveDimensionOverlay.tsx` (translate).
+  - Handles are a **DOM overlay**, not THREE objects (`TransformOverlay.tsx`), with scale ×8,
+    height, lift and three rotate handles. `createTransformHandles` at `WorkplaneViewport.tsx`
+    6959 builds THREE.Mesh handles and has **no callers** — dead legacy, safe to delete.
+- Shipped:
+  - Menu buttons made `draggable` and given a title hint. Drag-to-place verified end to end
+    in-tab: dragging Box from the menu onto the plate lands it at the cursor, snapped,
+    selected, with the gizmo up. This was a one-attribute fix for the single biggest gap.
+  - Shape menu turned into a 3-column grid of square tiles (`.shape-menu-list` → `display:
+    grid`, dropdown 244px → 268px, tiles `aspect-ratio: 1`, icon over label, `cursor: grab`
+    / `grabbing`). All 12 shapes are now visible without scrolling; it was 3 at a time.
+    Chrome moved onto the block-1 tokens, and a `.shape-menu-hint` footer explains the drag.
+  - Dimension sliders removed from Length/Width/Height only — gated on the existing
+    `allowsAboveSliderMax` flag in `ShapeInspector.tsx`, which is already exactly
+    `label === "Length" | "Width" | "Height"`. Every other property keeps its slider.
+  - `parseMeasurementExpression` added to `lib/measurementUnits.ts`: recursive descent over
+    `+ - * / ( )`, no eval, char-allowlisted, returns NaN on anything malformed so
+    `parseMeasurementInput` still handles plain numbers. Dimension fields now take `20/3`,
+    `1.5+0.2`, `(40-4)/2`. Comma decimals work (`12,5+1` → 13.5).
+  - Arrow-key nudge on dimension fields: ↑/↓ by one step, Shift for 10×.
+- Verified in-tab at `localhost:3001/?editor=1`: grid renders 3×4, drag places a box at the
+  drop point, inspector shows L/W/H as bare numeric fields. Expression parser exercised
+  against 15 cases (incl. `5/0`, `1+`, `(1+2`, `abc`) — all pass.
+- **Build gotcha (cost ~15 min):** Next's dev watcher does not see edits written to
+  `globals.css` through the host filesystem mount — the TSX changes hot-reloaded but the CSS
+  chunk kept serving the previous build across hard reloads and cache-busted URLs. `touch`
+  the file to force the rebuild. Worth remembering for every future CSS-only change.
+- Blocked: none. `npm run ci` still has to run on Marty's side (sandbox 45s cap, so no
+  `tsc --noEmit` here either — the type surface touched is small but unverified).
+- Next: dimension badges currently only appear on handle hover/pin
+  (`pinnedMeasureKey ?? hoverMeasureKey`); Tinkercad shows them on the selected object all
+  the time. Then the cel-shaded viewport (outline pass + contact shadows + hatched holes),
+  then the floating property card with the H2D manufacturability strip.
+
 ## 2026-08-06 — Live session (Cowork): UI redesign block 1, light theme retune
 - Root cause of "I keep going back to Tinkercad": the fork already ships a light theme, but
   its `:root` values were washed-out near-greys (`#fafafa` bg on `#f9f9fa` topbar on

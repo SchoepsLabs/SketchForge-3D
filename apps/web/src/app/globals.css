@@ -2392,76 +2392,91 @@ html[data-theme="dark"] .toolbar-icon.disabled .vector-toolbar-sprite-icon {
   top: var(--editor-toolbar-tools-height);
   left: 0;
   z-index: 60;
-  width: 244px;
+  width: 268px;
   max-height: min(650px, calc(100vh - 92px));
   overflow: hidden;
-  color: #253f57;
-  background: rgba(250, 252, 253, 0.98);
-  border: 1px solid #cfdce5;
-  border-radius: 4px;
-  box-shadow: 0 14px 34px rgba(26, 47, 66, 0.22);
+  color: var(--foreground);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
 }
 
 .shape-menu-title {
-  height: 42px;
-  padding: 0 15px;
-  color: #294760;
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 42px;
-  background: linear-gradient(180deg, #fff, #f3f7fa);
-  border-bottom: 1px solid #dbe5ed;
+  height: 36px;
+  padding: 0 12px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 36px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
 }
 
 .shape-menu-list {
-  display: flex;
-  max-height: min(608px, calc(100vh - 136px));
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px;
+  display: grid;
+  max-height: min(608px, calc(100vh - 168px));
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 10px;
   overflow-y: auto;
 }
 
 .shape-menu-item {
   display: flex;
-  min-height: 58px;
+  aspect-ratio: 1;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 11px;
-  padding: 5px 10px 5px 7px;
-  color: #2c455c;
-  background: #f8fafb;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  cursor: pointer;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  color: var(--muted-strong);
+  background: var(--tile);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  cursor: grab;
   touch-action: manipulation;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 400;
   transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
 .shape-menu-item:hover {
-  background: #fff;
-  border-color: #cbd9e3;
-  box-shadow: 0 4px 12px rgba(28, 48, 68, 0.13);
+  color: var(--foreground);
+  background: var(--tile-hover);
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
   transform: translateY(-1px);
+}
+
+.shape-menu-item:active {
+  cursor: grabbing;
+  transform: translateY(0);
 }
 
 .shape-menu-item img {
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
   pointer-events: none;
 }
 
 .shape-menu-item span {
   overflow: hidden;
-  min-width: 0;
-  max-width: 150px;
-  text-align: left;
+  width: 100%;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.shape-menu-hint {
+  padding: 7px 12px 9px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  border-top: 1px solid var(--border);
 }
 
 .action-buttons button {
