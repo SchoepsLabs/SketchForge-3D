@@ -7,6 +7,26 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-05 — Live session (Cowork), part 2: save-as shipped and proven end-to-end
+- Implemented the roadmap's "save-as for scratch scenes" (f27693e), Seam A:
+  `saveActiveProjectToShared` accepts `createProjectName` and builds the local project from
+  the `.skf` bytes it was already handed (same restore path as opening an .skf file), adopts
+  it as the active project, then runs the unchanged share flow. `projectsRef`/`activeProjectIdRef`
+  stand in for closure state so the overwrite retry inside one async continuation finds the
+  just-created project instead of creating twice. The editor requires an explicit `name` on
+  scratch scenes instead of leaking "SketchForge design" everywhere.
+- Env gotcha that cost a restart: `next dev apps/web` loads env files from **apps/web/**, not
+  the repo root — `SKETCHFORGE_SHARED_PROJECTS_DIR` now lives in `apps/web/.env.local`
+  (gitignored) pointing at the real parts library; the print outbox defaults to `<shared>/outbox`.
+- Full acceptance green, live, through the dock: scratch scene with one box → "Save the project
+  as pipeline-final, then send it to print" → local project created and adopted (URL took the
+  new id), `pipeline-final.skf` in the shared library, `outbox/pipeline-final-2026-08-05.stl`
+  valid (12 tris, watertight, 22×8×22). Also observed on the way: the dock refuses to print an
+  empty scene ("Add a solid shape before sending to print") and refuses to save a scratch scene
+  without a name — both by design.
+- Cleanup note for Marty's dashboard: two stray local projects named `resume-test` were created
+  during acceptance (one holds a test box, one is empty); delete at leisure.
+
 ## 2026-08-05 — Live session (Cowork): Block 7 acceptance + autosave fix
 - Ran the browser-side acceptance the 3-hour block couldn't: fresh bundle loaded, Resume bar
   verified end-to-end. Found and fixed a real hole: **the autosave loop overwrote the stored

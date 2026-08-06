@@ -251,7 +251,7 @@ work done in the editor stops being ephemeral.
       to `NIGHTLOG-style docs/assistant/SESSIONS.md` so overnight runs and the desktop
       Claude can see what was designed in the dock and why.
       *Accept:* log entry per conversation with timestamp, prompts, and executed actions.
-- [ ] **Save-as for scratch scenes** (found in live acceptance 2026-08-05) — `save_project`
+- [x] **Save-as for scratch scenes** (found in live acceptance 2026-08-05) — `save_project`
       only promotes an already-open local project; a scratch scene (`projectId: null`) cannot
       be saved by name at all, which is the main new-design flow. The dock correctly refused,
       and also held `send_to_print` because `<project>-<date>.stl` would have landed in the
