@@ -7,6 +7,45 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-06 — Live session (Cowork): UI redesign block 1, light theme retune
+- Root cause of "I keep going back to Tinkercad": the fork already ships a light theme, but
+  its `:root` values were washed-out near-greys (`#fafafa` bg on `#f9f9fa` topbar on
+  `#f1f1f3` subbar) with almost no contrast, so the theme preference defaults to `system`
+  and Marty's OS is dark. The toolbar's enabled/disabled affordance (`opacity: 0.22` on
+  disabled sprites, a blue-ish `hue-rotate` chain on enabled ones) is tuned for a **light**
+  background — under dark it collapses to uniform grey, which is exactly the
+  "27 identical icons, can't tell what's live" complaint.
+- Audited the live Tinkercad 2026 editor side by side and sampled its real tokens off the
+  DOM: bg `#F4F5F6`, text `#34495E`, secondary `#646E80`, blue `#5C95DA`, borders `#DEDEDE`,
+  accent pink `#F969A4`, radii 4–7px, font ArtifaktElement (Autodesk-proprietary → Inter).
+- Shipped:
+  - `globals.css` `:root` retuned to the sampled neutrals; `--primary` darkened to `#1f6fd0`
+    for AA on white (Tinkercad's `#5C95DA` fails on `#FFFFFF`); `--font-ui` → Inter.
+  - ~25 new tokens added and mirrored into `html[data-theme="dark"]`: `--icon{,-hover,
+    -disabled,-disabled-opacity,-enabled-opacity}`, `--mesh-outline{,-w}`,
+    `--contact-shadow`, `--selection{,-w}`, `--handle-{fill,stroke}`, `--gizmo-arc`,
+    `--hole-hatch-{a,b}`, `--hole-opacity`, `--warn-{bg,text,border}`, `--ok-{bg,text}`,
+    `--radius-{control,card,pill}`, `--hairline`. Blocks 2–5 consume these; nothing reads
+    them yet except the toolbar.
+  - `.toolbar-icon` de-hardcoded (`#7890a4`/`#d6e0e9`/`#29465f`/`#0b8dbd` → tokens) and
+    given a dark-mode sprite filter chain that brightens instead of darkening, so the
+    enabled/disabled read survives in dark too.
+  - `workplaneGrid.ts` light palette softened (minor .55→.32, major .70→.50, axis .88→.70,
+    hues pulled off cyan toward `#a9cfe4`/`#7bb4d8`). The plate now recedes and geometry
+    reads against it instead of competing with the grid.
+  - `workplaneSettings.ts` default `background` `#f8fbfc` → `#f4f5f6` to match `--background`.
+- Verified in-tab at `localhost:3001/?editor=1` with `sketchForge.theme=light`: chrome is
+  light, and enabled (Home, Add shape) vs disabled (clipboard, undo/redo) is now readable
+  at a glance without hovering.
+- Note: the 3D scene background follows React `resolvedTheme` + `workspace.background`,
+  **not** the CSS tokens — flipping `data-theme` in devtools alone leaves the viewport dark.
+  Real toggle is Workspace settings → theme.
+- Blocked: none. `npm run ci` still has to run on Marty's side (sandbox 45s cap).
+- Next (see `D:\Claude\3d Designer\sketchforge-ui\REDESIGN_SPEC.md`): block 2 is the
+  drag-to-place shape palette — the single biggest gap. Then gizmo + on-canvas typed
+  dimensions, then the cel-shaded viewport, then the floating property card with the
+  H2D manufacturability strip.
+
 ## 2026-08-05 — Live session (Cowork), part 2: save-as shipped and proven end-to-end
 - Implemented the roadmap's "save-as for scratch scenes" (f27693e), Seam A:
   `saveActiveProjectToShared` accepts `createProjectName` and builds the local project from

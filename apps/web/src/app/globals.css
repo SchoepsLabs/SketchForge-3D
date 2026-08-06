@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
-  --foreground: #31465d;
-  --topbar: #f9f9fa;
-  --subbar: #f1f1f3;
-  --panel: #fafafa;
-  --tile: #f4f5f7;
-  --tile-hover: #ffffff;
-  --border: #dde2e8;
-  --border-strong: #cfd8e2;
-  --muted: #c5d0dc;
-  --muted-strong: #9cabb8;
-  --primary: #009cde;
-  --active-tab: #4f8edb;
-  --nav-text: #31465d;
-  --workplane: #9adcf0;
-  --workplane-soft: rgba(154, 220, 240, 0.28);
-  --shadow: 0 2px 6px rgba(35, 55, 75, 0.12);
-  --font-ui: "Avenir Next", Avenir, "Helvetica Neue", Arial, sans-serif;
+  --background: #f4f5f6;
+  --foreground: #34495e;
+  --topbar: #ffffff;
+  --subbar: #ffffff;
+  --panel: #ffffff;
+  --tile: #ffffff;
+  --tile-hover: #f0f6fd;
+  --border: #e4e7ea;
+  --border-strong: #c9d2da;
+  --muted: #8a97a4;
+  --muted-strong: #646e80;
+  --primary: #1f6fd0;
+  --active-tab: #1f6fd0;
+  --nav-text: #34495e;
+  --workplane: #8fc0e4;
+  --workplane-soft: rgba(217, 237, 249, 0.85);
+  --shadow: 0 2px 8px rgba(52, 73, 94, 0.1);
+  --font-ui: Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --editor-toolbar-height: 108px;
   --editor-toolbar-tools-height: 76px;
+
+  --icon: #3b7dd8;
+  --icon-hover: #1f6fd0;
+  --icon-disabled: #b9c2cb;
+  --icon-disabled-opacity: 0.3;
+  --icon-enabled-opacity: 0.95;
+
+  --mesh-outline: #2e3a45;
+  --mesh-outline-w: 1.6px;
+  --contact-shadow: rgba(0, 0, 0, 0.07);
+  --selection: #00c2e0;
+  --selection-w: 2.4px;
+  --handle-fill: #ffffff;
+  --handle-stroke: #34495e;
+  --gizmo-arc: #6b7b8b;
+
+  --hole-hatch-a: #c9cfd5;
+  --hole-hatch-b: #edeff1;
+  --hole-opacity: 0.55;
+
+  --warn-bg: #faeeda;
+  --warn-text: #8a6d1f;
+  --warn-border: #efcf8f;
+  --ok-bg: #eaf3de;
+  --ok-text: #3b6d11;
+
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-pill: 20px;
+  --hairline: 0.5px;
 }
 
 * {
@@ -2132,15 +2162,15 @@ button {
   width: 43px;
   height: 43px;
   place-items: center;
-  color: #7890a4;
+  color: var(--icon);
   background: transparent;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
 .toolbar-icon.disabled {
-  color: #d6e0e9;
+  color: var(--icon-disabled);
   cursor: default;
   opacity: 1;
 }
@@ -2150,15 +2180,15 @@ button {
 }
 
 .toolbar-icon:not(.disabled):hover {
-  background: rgba(255, 255, 255, 0.66);
-  box-shadow: inset 0 0 0 1px rgba(185, 202, 216, 0.86);
-  color: #29465f;
+  background: var(--tile-hover);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  color: var(--icon-hover);
 }
 
 .toolbar-icon.active {
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: inset 0 0 0 2px rgba(0, 166, 219, 0.28);
-  color: #0b8dbd;
+  background: var(--tile-hover);
+  box-shadow: inset 0 0 0 2px var(--primary);
+  color: var(--icon-hover);
 }
 
 .toolbar-icon svg,
@@ -2232,7 +2262,7 @@ button {
 
 .toolbar-icon.disabled .toolbar-command-icon {
   filter: grayscale(1) brightness(1.25);
-  opacity: 0.22;
+  opacity: var(--icon-disabled-opacity);
 }
 
 .toolbar-icon:not(.disabled):hover .toolbar-command-icon {
@@ -2251,7 +2281,7 @@ button {
   background-size: var(--sprite-width) var(--sprite-height);
   background-position: var(--sprite-x) var(--sprite-y);
   filter: grayscale(1) contrast(0.78) brightness(1.35);
-  opacity: 0.22;
+  opacity: var(--icon-disabled-opacity);
   transition: filter 120ms ease, opacity 120ms ease;
 }
 
@@ -2262,12 +2292,12 @@ button {
   background-size: var(--vector-sprite-width) var(--vector-sprite-height);
   background-position: var(--vector-sprite-x) var(--vector-sprite-y);
   filter: grayscale(1) contrast(0.78) brightness(1.35);
-  opacity: 0.22;
+  opacity: var(--icon-disabled-opacity);
   transition: filter 120ms ease, opacity 120ms ease;
 }
 
 .toolbar-icon.disabled .vector-toolbar-sprite-icon {
-  opacity: 0.22;
+  opacity: var(--icon-disabled-opacity);
 }
 
 .toolbar-icon:not(.disabled) .toolbar-sprite-icon,
@@ -2276,7 +2306,21 @@ button {
 .action-buttons button .vector-toolbar-sprite-icon,
 .inspector-header-icon .vector-toolbar-sprite-icon {
   filter: grayscale(0.35) sepia(0.12) saturate(1.7) hue-rotate(165deg) contrast(1.18) brightness(0.78) drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 3px rgba(0, 156, 222, 0.2));
-  opacity: 0.94;
+  opacity: var(--icon-enabled-opacity);
+}
+
+html[data-theme="dark"] .toolbar-icon:not(.disabled) .toolbar-sprite-icon,
+html[data-theme="dark"] .toolbar-icon:not(.disabled) .vector-toolbar-sprite-icon,
+html[data-theme="dark"] .shape-menu-trigger .vector-toolbar-sprite-icon,
+html[data-theme="dark"] .action-buttons button .vector-toolbar-sprite-icon,
+html[data-theme="dark"] .inspector-header-icon .vector-toolbar-sprite-icon {
+  filter: grayscale(0.3) sepia(0.18) saturate(2) hue-rotate(165deg) contrast(1.05) brightness(1.75) drop-shadow(0 0 2px rgba(0, 0, 0, 0.55));
+}
+
+html[data-theme="dark"] .toolbar-icon.disabled .toolbar-command-icon,
+html[data-theme="dark"] .toolbar-icon.disabled .toolbar-sprite-icon,
+html[data-theme="dark"] .toolbar-icon.disabled .vector-toolbar-sprite-icon {
+  filter: grayscale(1) brightness(0.85);
 }
 
 .toolbar-icon:not(.disabled):hover .toolbar-sprite-icon,
@@ -6429,6 +6473,28 @@ html[data-theme="dark"] {
   --muted-strong: #7890a1;
   --nav-text: #d1e0eb;
   --shadow: 0 3px 12px rgba(0, 0, 0, 0.32);
+
+  --icon: #7cc4e8;
+  --icon-hover: #a8dcf5;
+  --icon-disabled: #46596a;
+  --icon-disabled-opacity: 0.24;
+  --icon-enabled-opacity: 1;
+
+  --mesh-outline: #0a1119;
+  --contact-shadow: rgba(0, 0, 0, 0.35);
+  --selection: #00e5ff;
+  --handle-fill: #e8f4fa;
+  --handle-stroke: #0a1119;
+  --gizmo-arc: #9db2c4;
+
+  --hole-hatch-a: #3a4a57;
+  --hole-hatch-b: #22313c;
+
+  --warn-bg: #3a2f16;
+  --warn-text: #e8c878;
+  --warn-border: #5c4a22;
+  --ok-bg: #1e3010;
+  --ok-text: #a8d46a;
 }
 
 html[data-theme="dark"] .move-dimension-line {

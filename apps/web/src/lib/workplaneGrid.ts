@@ -45,10 +45,10 @@ export function workplaneGridPalette(
     };
   }
   return {
-    minor: { color: "#91dff0", opacity: 0.55 },
-    major: { color: "#4bbddf", opacity: 0.7 },
-    axis: { color: "#34aad2", opacity: 0.88 },
-    border: { color: "#58c5e6", opacity: 0.9 },
+    minor: { color: "#a9cfe4", opacity: 0.32 },
+    major: { color: "#7bb4d8", opacity: 0.5 },
+    axis: { color: "#5a9fcc", opacity: 0.7 },
+    border: { color: "#8fc0e4", opacity: 0.85 },
   };
 }
 
