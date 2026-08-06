@@ -23,6 +23,36 @@ Newest entries on top. Template:
 - Still owed from this side: dock "save the project as <name>" and "send it to print"
   acceptance (next), and the reserved icon pass.
 
+## 2026-08-05 — Follow-up: npm run export was broken; manifold deferral attempted and reverted
+- **Fixed a regression I shipped this morning.** `npm run export` (the static `file:` build) has been
+  failing since the assistant route landed: it declares `export const dynamic = "force-dynamic"`, which
+  `output: export` rejects outright. Now `revalidate = false`, matching every other API route here —
+  a streaming POST handler is uncacheable without the stronger directive anyway. Export builds and
+  passes `verify-static-worker-assets` again. **`npm run ci` is only typecheck + test, so nothing
+  caught this**; `docs/perf/BASELINE.md` now lists `npm run export` in its re-run commands with that
+  note attached.
+- **Attempted the manifold deferral from this morning's baseline, and reverted it.** The idea was
+  sound — `manifoldWasmBase64` (719 KB) and `manifoldModuleSource` (80 KB) are read only by the
+  `file:` branch of `getManifoldRuntime()`, which exists purely for the static export, yet they are
+  static imports so every server build ships them. Two mechanisms tried, neither worked:
+  1. `resolve.alias` keyed on `"@/generated/…"` — **never consulted**, because Next resolves the `@`
+     path mapping itself. Bundle came out byte-identical.
+  2. `NormalModuleReplacementPlugin` on the resolved file path — `next build` then reported the editor
+     route dropping **1.25 MB → 948 kB**, which I briefly reported as a win. It was not: a recursive
+     search of the build output found the base64 still present in `static/chunks/app/page-<hash>.js`,
+     with the *same content hash* as the static export's copy.
+- **The measurement lesson, which cost the most time here:** I verified with a flat scan of
+  `static/chunks/*.js` and with Next's route-size column, and both misled me — the flat scan misses
+  `chunks/app/`, and the route "Size" figure moved without the module graph changing the way I
+  assumed. Verify a payload claim by searching the build output **recursively** for a substring of the
+  **actual payload**, and check the server build and the export separately.
+- Net: the ~800 KB saving is still on the table and still worth taking, but it is a real piece of
+  bundler work, not a two-line config change. `BASELINE.md` now records what does not work so the next
+  attempt starts further along, instead of repeating both dead ends.
+- typecheck + test (467) green; `npm run build` and `npm run export` both green; config reverted, so
+  the only code change kept is the one-line route fix.
+- Blocked: nothing.
+
 ## 2026-08-05 — Follow-up: print handoff verified from a real tab
 - The Block 7 task 4 entry logged the dock/toolbar half of "send to print" as **not** verified, because
   the open editor tab was carrying a pre-restart bundle and answered "Unknown MCP command". That is
