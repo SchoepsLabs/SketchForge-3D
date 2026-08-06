@@ -262,6 +262,50 @@ work done in the editor stops being ephemeral.
       *Accept:* dock "save the project as X, then send it to print" works from a scratch
       scene: X.skf in the shared library, X-<date>.stl in the outbox.
 
+## Block 8 — Tinkercad-grade UI (added 2026-08-06; Marty: "I keep going back to Tinkercad")
+
+The honest user test failed: features are ahead, but the editor loses on look, layout,
+gallery, and hand-feel — so the muscle memory stays with Tinkercad. The strategy is to
+**match Tinkercad's layout and brightness so his habits transfer**, then let the dock,
+print pipeline, and parametrics be the reasons there's no going back. Structural work is
+overnight-safe; every visual call gets approved live in the editor with Marty/desktop
+Claude before it's considered done.
+
+- [ ] **Persistent shape gallery panel** — Tinkercad's defining element. Right-side (or
+      left, mirroring Tinkercad exactly) always-visible panel of shape cards with real
+      rendered color thumbnails (offscreen three.js render per catalog entry, cached),
+      scrollable categories, drag-in using the existing placement ghost, click-to-arm
+      cursor placement. The toolbar "Add shape" dropdown becomes secondary.
+      *Accept:* every catalog shape visible at a glance as a colored 3D thumbnail; drag or
+      click-place without opening any menu; panel collapsible and remembered.
+- [ ] **Light "Tinkercad-bright" theme as default** — white/near-white chrome, light
+      blue-grey workplane like the current light palette but tuned against a Tinkercad
+      screenshot side by side; dark stays selectable. Buttons/cards get Tinkercad's
+      rounding and generous hit targets. One shared spacing/radius token set in
+      globals.css, not per-component values.
+      *Accept:* side-by-side screenshot comparison approved live; no component uses
+      one-off radii/spacing.
+- [ ] **Layout parity pass** — mirror Tinkercad's furniture: compact top bar, view cube
+      and camera controls where Tinkercad puts them, inspector popover near the selection
+      rather than a full-height right rail (the gallery owns the right edge). Keyboard and
+      existing features must all survive relocation.
+      *Accept:* a Tinkercad user finds copy/duplicate/group/hole/workplane without
+      hunting; approved live.
+- [ ] **Hand-feel: manipulation parity** — profile drag/resize/rotate against Tinkercad:
+      input-to-update latency, snap behavior mid-drag, dimension callouts appearing on
+      selection like Tinkercad's, handle sizes and grab tolerance. Fix the measurable gaps
+      (batch state updates during drag, pointer capture, damping) — feel, verified by
+      Marty actually dragging things.
+      *Accept:* Marty says dragging feels as immediate as Tinkercad; no dropped frames in
+      a 60-shape scene drag (perf run extended with an interaction benchmark).
+- [ ] **Speed: first-load and interaction** — retry the manifold/OCCT deferral that was
+      attempted and reverted (12+17 ms priced saving on ~800 KB), lazy-load the sketch
+      workspace, and get first-interactive under 2 s on the dev box.
+      *Accept:* BASELINE.md updated with before/after; editor interactive < 2 s cold.
+- [ ] **Icon unification (absorbed from Block 5)** — the 22 PNG/sprite icons redrawn as
+      inline `currentColor` SVGs in the new visual language, approved in batches live.
+      *Accept:* zero `<img>`/sprite toolbar icons; both themes crisp; approved live.
+
 ### Deliberately out of scope this month
 - Full parametric constraint solver (rewrite; breaks the mergeability rule) — generators cover the 80%. [§3.3]
 - Desktop app [U42] — upstream defers it to post-1.0.
