@@ -23,6 +23,20 @@ Newest entries on top. Template:
 - Still owed from this side: dock "save the project as <name>" and "send it to print"
   acceptance (next), and the reserved icon pass.
 
+## 2026-08-05 — Follow-up: print handoff verified from a real tab
+- The Block 7 task 4 entry logged the dock/toolbar half of "send to print" as **not** verified, because
+  the open editor tab was carrying a pre-restart bundle and answered "Unknown MCP command". That is
+  now closed out: Marty exercised it from a reloaded tab and `resume-test-2026-08-05.stl` landed in the
+  outbox at **1,504 bytes of real geometry** (ASCII STL with actual facets, not the 113-byte stub I had
+  been posting with curl), timestamped well after my own testing stopped.
+- So the whole path is confirmed: scene → STL built in the browser → POST → atomic write into the
+  watched folder → `<project>-<date>.stl` naming. Nothing in the print handoff is owed any more.
+- Also confirms the stale-bundle diagnosis from the task 4 entry was right: the code was always
+  correct, the tab just needed a reload.
+- Still owed from the same session, and still needing eyes on the viewport: the autosave Resume bar
+  (the `resume-test` project name suggests it was being exercised, but I have not seen it), Block 4's
+  numeric-entry wiring, and Block 5's icon pass.
+
 ## 2026-08-05 — Session summary (Block 7 complete, Block 1 cleared, Block 4 started)
 - **Shipped, 20 commits on `lumera-custom`, all pushed.** Block 7 (all five tasks), all three Block 1
   leftovers, the tested core of Block 4's numeric transform entry, and a drift guard for the MCP
