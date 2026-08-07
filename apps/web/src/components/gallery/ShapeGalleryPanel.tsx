@@ -57,7 +57,16 @@ export function ShapeGalleryPanel({ assets, onPlaceShape, resolvedTheme }: Shape
   const [hydrated, setHydrated] = useState(false);
   const [query, setQuery] = useState("");
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
-  const renderedRef = useRef(false);
+  /**
+   * Which theme the current tile art was rendered for, or null for "none yet".
+   *
+   * Keyed on the theme rather than a boolean `rendered` flag on purpose: with a
+   * boolean plus a separate effect to reset it, a theme switch re-runs the
+   * render effect *before* the reset effect clears the flag, so the render
+   * bails out and every tile stays on its PNG fallback for good. Comparing
+   * against the theme makes the guard independent of effect ordering.
+   */
+  const renderedForRef = useRef<string | null>(null);
 
   useEffect(() => {
     setState(readStoredState());
@@ -84,8 +93,8 @@ export function ShapeGalleryPanel({ assets, onPlaceShape, resolvedTheme }: Shape
    * first paint, and a collapsed one never pays for them at all.
    */
   useEffect(() => {
-    if (!hydrated || state.collapsed || renderedRef.current) return;
-    renderedRef.current = true;
+    if (!hydrated || state.collapsed || renderedForRef.current === resolvedTheme) return;
+    renderedForRef.current = resolvedTheme;
     const pixelRatio = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
 
     const handle = window.setTimeout(() => {
@@ -105,17 +114,13 @@ export function ShapeGalleryPanel({ assets, onPlaceShape, resolvedTheme }: Shape
           rendered[asset.id] = dataUrl;
         }
       }
-      setThumbnails((current) => ({ ...current, ...rendered }));
+      // Replaced, not merged: art rendered for the previous theme must not
+      // linger for any tile the new pass could not produce.
+      setThumbnails(rendered);
     }, 0);
 
     return () => window.clearTimeout(handle);
   }, [assets, hydrated, resolvedTheme, state.collapsed]);
-
-  // A theme flip invalidates the art, so allow one more render pass.
-  useEffect(() => {
-    renderedRef.current = false;
-    setThumbnails({});
-  }, [resolvedTheme]);
 
   useEffect(() => () => disposeThumbnailRenderer(), []);
 
