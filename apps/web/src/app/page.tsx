@@ -4,7 +4,7 @@ import { Clock3, EllipsisVertical, FileUp, FolderKanban, Grid3X3, HomeIcon, List
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SketchForgeEditor, importedShapeFromStl, importedShapeFromSvg } from "@/components/SketchForgeEditor";
 import { classifySharedSaveFailure, sharedProjectFileName, sharedSaveHeaders, SharedProjectSaveError, type SharedSaveMode } from "@/lib/sharedProjectSave";
-import { applyAppTheme, readStoredAppTheme, resolveAppTheme, storeAppTheme, type AppThemePreference, type ResolvedAppTheme } from "@/lib/appTheme";
+import { applyAppTheme, DEFAULT_APP_THEME, readStoredAppTheme, resolveAppTheme, storeAppTheme, type AppThemePreference, type ResolvedAppTheme } from "@/lib/appTheme";
 import { hydrateEditorHistoryState, type EditorHistoryEntry } from "@/lib/editorHistory";
 import { createLocalId } from "@/lib/localIds";
 import {
@@ -501,7 +501,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortMode, setSortMode] = useState("recent");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [themePreference, setThemePreference] = useState<AppThemePreference>("system");
+  const [themePreference, setThemePreference] = useState<AppThemePreference>(DEFAULT_APP_THEME);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedAppTheme>("light");
   const [downloadMode, setDownloadMode] = useState<DownloadMode>("browser");
   const [downloadFolder, setDownloadFolder] = useState("");

@@ -283,7 +283,11 @@ Claude before it's considered done.
       cursor placement. The toolbar "Add shape" dropdown becomes secondary.
       *Accept:* every catalog shape visible at a glance as a colored 3D thumbnail; drag or
       click-place without opening any menu; panel collapsible and remembered.
-- [ ] **Light "Tinkercad-bright" theme as default** — white/near-white chrome, light
+- [ ] **Light "Tinkercad-bright" theme as default** *(2026-08-06: light is now the real
+      default and the radius scale is fully tokenised. The **spacing sweep is outstanding** —
+      several hundred declarations across dashboard + editor, deliberately left for reviewable
+      batches rather than a blind overnight rewrite. Unticked also pending live approval of the
+      radius normalisation, which moves real pixels. See NIGHTLOG 2026-08-06.)* — white/near-white chrome, light
       blue-grey workplane like the current light palette but tuned against a Tinkercad
       screenshot side by side; dark stays selectable. Buttons/cards get Tinkercad's
       rounding and generous hit targets. One shared spacing/radius token set in

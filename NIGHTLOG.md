@@ -7,6 +7,46 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-06 — Block 8, task 2 (theme token set + light default)
+
+**Provisional, like task 1.** The palette values themselves were approved in the 2026-08-06
+live session; what is new here is the *default* and a normalisation that moves real pixels.
+Neither has been looked at with Marty, so the box stays unticked.
+
+- Most of this task was already done by `661f7a8` (the sampled-neutral retune and the ~25-token
+  layer). What was actually left was the two things that entry flagged and did not do: nothing
+  consumed the tokens, and the theme still defaulted to `system`.
+- **Light is now the default** (`DEFAULT_APP_THEME` in `lib/appTheme.ts`, used by every
+  fallback and by the dashboard's initial state). This is the fix for the root cause the
+  2026-08-06 entry identified: the fork ships a light theme tuned for reading geometry, but
+  defaulting to `system` meant anyone on a dark OS — Marty — never saw it. `system` is still a
+  preference you can choose; it is just no longer what you get by accident, and dark remains
+  selectable. Guarded by tests including the empty-storage and storage-throws paths.
+- **Radius normalisation.** 152 hand-typed radii across 16 distinct values were doing the work
+  of about five. Added `--radius-{xs,panel,round}` alongside the existing control/card/pill and
+  swept every single-value chrome radius onto the scale. Percentage and organic radii (blob
+  shapes, `50%` circles) are geometry rather than chrome and were deliberately left literal.
+  **This moves real pixels** — 5 px and 7 px controls become 6 px, 9 px cards become 8 px,
+  17/22 px pills become 20 px — which is the point of the task, and exactly the kind of change
+  that needs eyes on it.
+- Added the `--space-1…6` scale in task 1; the new gallery chrome is built on it.
+- Verified live: tokens resolve, real chrome consumes them (`categoryPill=20px`, `tile=8px` come
+  from the tokens, not literals), light chrome renders clean, and dark still reads correctly
+  with the gallery in it.
+- **Not verified, and I want to be straight about it:** this dev box's OS preference is *light*,
+  so a live load cannot prove the default changed behaviour — it would have resolved to light
+  either way. The unit tests prove the fallback (`readStoredAppTheme(null) === "light"`); the
+  dark-OS path is covered by test, not by observation.
+- **Deliberately not done: the spacing sweep.** The acceptance says "no component uses one-off
+  radii/spacing". Radii are bounded and mechanical, so they are complete. Spacing is not — it is
+  several hundred padding/gap/margin declarations across 7.8k lines of CSS serving the dashboard
+  as well as the editor, and rewriting them blind overnight, with no one to approve the result,
+  is how you wake up to a subtly broken app. The scale exists and new chrome uses it; converting
+  the existing chrome should be done in reviewable batches with eyes on each. **This task is not
+  finished** — that is the remaining half.
+- typecheck green; **498 tests green** (+3).
+- Blocked: nothing. Next: task 5 (speed).
+
 ## 2026-08-06 — Block 8, task 1 (persistent shape gallery panel)
 
 **Nothing visual in this entry is done.** Block 8's premise is that every visual call gets

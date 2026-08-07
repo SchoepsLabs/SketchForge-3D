@@ -9,8 +9,18 @@ export const APP_THEME_OPTIONS = [
 export type AppThemePreference = (typeof APP_THEME_OPTIONS)[number]["value"];
 export type ResolvedAppTheme = Exclude<AppThemePreference, "system">;
 
+/**
+ * Light, not `system`, is the fallback.
+ *
+ * The fork ships a light theme tuned for reading geometry, but defaulting to
+ * `system` meant anyone on a dark OS never saw it — which is exactly why the
+ * retuned palette went unnoticed until the 2026-08-06 audit. `system` remains a
+ * preference the user can pick; it is just no longer what you get by accident.
+ */
+export const DEFAULT_APP_THEME: AppThemePreference = "light";
+
 export function normalizeAppThemePreference(value: unknown): AppThemePreference {
-  return value === "light" || value === "dark" || value === "system" ? value : "system";
+  return value === "light" || value === "dark" || value === "system" ? value : DEFAULT_APP_THEME;
 }
 
 export function resolveAppTheme(preference: AppThemePreference, prefersDark: boolean): ResolvedAppTheme {
@@ -18,11 +28,11 @@ export function resolveAppTheme(preference: AppThemePreference, prefersDark: boo
 }
 
 export function readStoredAppTheme(storage: Pick<Storage, "getItem"> | null | undefined): AppThemePreference {
-  if (!storage) return "system";
+  if (!storage) return DEFAULT_APP_THEME;
   try {
     return normalizeAppThemePreference(storage.getItem(APP_THEME_STORAGE_KEY));
   } catch {
-    return "system";
+    return DEFAULT_APP_THEME;
   }
 }
 
