@@ -7,6 +7,59 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-06 — Block 8, task 5 (speed: first-load and interaction)
+
+This one is not a visual task, so unlike tasks 1 and 2 the numbers here stand on their own —
+but one path in it is unverified and is called out below.
+
+- **The manifold deferral is done.** Both previous attempts (2026-08-05) tried to make the
+  bundler pretend a static import wasn't there — `resolve.alias`, then
+  `NormalModuleReplacementPlugin`. Neither could, because the resolver was never the problem:
+  a static import at module scope is a hard edge in the module graph. The fix was to move the
+  import to its only reader — `await import()` inside the `file:` branch of
+  `getManifoldRuntime()`. No webpack config at all.
+  - Editor route **1.24 MB → 944 kB**, first load **1.35 MB → 1.05 MB**.
+  - `app/page-*.js` **1276.6 KB → 502.3 KB**.
+  - Verified the way the failed attempt should have been: recursive search of the build output
+    for a substring of the *actual* base64. It is gone from the page chunk, and now sits alone
+    in `343.*.js` (702 KB), which the prerendered HTML does not reference.
+  - Confirmed against a real production serve (`next start`, editor open in Chrome): neither
+    `343.*` nor `317.*` appears in the loaded resource list.
+- **`SketchWorkspace` is now `next/dynamic` + `ssr: false`** — it only mounts in sketch mode.
+  Splits into a 29.4 KB on-demand chunk.
+- **A third dead end, recorded so nobody retries it.** The tidy way to keep the export's copy
+  eager while the served build defers is to branch on the build-time `STATIC_EXPORT_BUILD`
+  literal with two `import()`s of the same module, one carrying `webpackMode: "eager"`. It does
+  not work: webpack takes the *union* of import modes, eager wins, the module goes back into
+  the parent chunk, and the server build silently returned to 1.24 MB — the entire saving handed
+  back while still looking plausible. Reverted; the plain dynamic import ships.
+- **Two chunk attributions in BASELINE.md were wrong**, and it cost the 2026-08-05 session time.
+  `f858556e-*.js` (634 KB) and `38b89ec4-*.js` (474 KB) were recorded as the manifold wasm and
+  module source. They are neither — both begin `q.exports=JSON.parse('{"glyphs":…`: they are
+  **three.js typeface JSON**. Corrected in place, with the lesson (identify a chunk by grepping
+  its contents, never by inferring from its size).
+- **So the top payload contributor is now the fonts, and it is bigger than what I just removed:**
+  six typeface JSONs, statically imported *twice* (`SketchForgeEditor.tsx:13-18` and
+  `WorkplaneViewport.tsx:15-20`), ~1.1 MB raw, needed only for text shapes and only one face per
+  shape. Same shape of win, but text geometry is built synchronously today, so deferring it means
+  making that path async inside both giant files. **Left as its own task rather than rushed** —
+  noted in BASELINE with the sizes.
+- **Interactive time:** against a production serve, `domInteractive` **78 ms**, load event
+  **879 ms**, gallery tiles present. Comfortably under the 2 s the roadmap asked for — though
+  that is a localhost serve on this box, not a cold cache over a network, so read it as "the
+  payload work landed", not as a field measurement.
+- **Not verified, and it is the one thing I would not sign off on:** the `file:` branch now
+  depends on webpack fetching `343.*.js` on demand, where the bytes used to be in an eagerly
+  loaded chunk. Nobody has opened the export under `file://` and run a boolean since the change.
+  Complicating it: the export's HTML references assets as absolute `/_next/…` (and
+  `verify-static-worker-assets` *requires* that form), which would not resolve from an arbitrary
+  directory under `file://` anyway — so how that build is actually opened needs establishing
+  before concluding either way. `npm run export` builds green and its output still contains the
+  base64; that is as far as I can take it without knowing the deployment.
+- typecheck green; **498 tests green**; `npm run build`, `npm run export` and `npm run perf` all
+  green, with the first boolean at 16.3 ms vs 17.1 ms baseline.
+- Blocked: nothing.
+
 ## 2026-08-06 — Block 8, task 2 (theme token set + light default)
 
 **Provisional, like task 1.** The palette values themselves were approved in the 2026-08-06

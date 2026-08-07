@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Check, CloudUpload, Download, Eye, FolderOpen, X } from "lucide-react";
 import type manifoldModule from "manifold-3d";
 import type { ManifoldToplevel } from "manifold-3d";
@@ -16,8 +17,6 @@ import gentilisBoldFontJson from "three/examples/fonts/gentilis_bold.typeface.js
 import helvetikerBoldFontJson from "three/examples/fonts/helvetiker_bold.typeface.json";
 import optimerBoldFontJson from "three/examples/fonts/optimer_bold.typeface.json";
 import type { AppThemePreference, ResolvedAppTheme } from "@/lib/appTheme";
-import { manifoldModuleSource } from "@/generated/manifoldModuleSource";
-import { manifoldWasmBase64 } from "@/generated/manifoldWasmBase64";
 import { sphereTessellation } from "@/lib/sphereTessellation";
 import { createGearGeometry } from "@/lib/gearGeometry";
 import { regularPolygonFootprintScale } from "@/lib/regularPolygonFootprint";
@@ -56,7 +55,17 @@ import { AssistantDock } from "./assistant/AssistantDock";
 import { ShapeGalleryPanel } from "./gallery/ShapeGalleryPanel";
 import { ContextMenu } from "./workplane/ContextMenu";
 import { SceneDraftGuard } from "./workplane/SceneDraftGuard";
-import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "./SketchWorkspace";
+import type { SketchMeasurement, SketchSelection, SketchTool } from "./SketchWorkspace";
+
+/**
+ * The sketch workspace is only mounted in sketch mode, so it has no business in
+ * the editor's first-load payload — geometry mode is where every session starts
+ * and most sessions stay. `ssr: false` because it is canvas-driven and has
+ * nothing to render on the server.
+ */
+const SketchWorkspace = dynamic(() => import("./SketchWorkspace").then((module) => module.SketchWorkspace), {
+  ssr: false,
+});
 import { EdgeModifierPanel } from "./workplane/EdgeModifierPanel";
 import {
   canonicalizeShape,
@@ -691,7 +700,21 @@ function base64ToUint8Array(value: string) {
   return bytes;
 }
 
+/**
+ * The inlined manifold runtime and its base64 WASM exist only for the static
+ * `file:` export, where nothing can be fetched. Importing them dynamically —
+ * inside the branch that is the only reader — keeps ~800 KB of base64 out of
+ * the served build's first-load payload while the export still gets its inlined
+ * copy through this same code path.
+ *
+ * Two earlier attempts tried to strip these with bundler config
+ * (`resolve.alias`, `NormalModuleReplacementPlugin`) and both failed, because
+ * the problem was never the resolver: a static import at module scope is a hard
+ * edge in the graph. Moving the import is what actually splits the chunk. See
+ * docs/perf/BASELINE.md.
+ */
 async function importBundledManifoldModule() {
+  const { manifoldModuleSource } = await import("@/generated/manifoldModuleSource");
   const blobUrl = URL.createObjectURL(new Blob([manifoldModuleSource], { type: "text/javascript" }));
   try {
     return (await import(/* webpackIgnore: true */ blobUrl)) as { default: typeof manifoldModule };
@@ -708,8 +731,9 @@ function getManifoldRuntime() {
     ? importBundledManifoldModule().then((module) => module.default)
     : import(/* webpackIgnore: true */ manifoldScriptUrl).then((module) => (module as { default: typeof manifoldModule }).default);
   manifoldRuntimePromise ??= runtimeModule
-    .then((module) => {
+    .then(async (module) => {
       if (isFileBuild) {
+        const { manifoldWasmBase64 } = await import("@/generated/manifoldWasmBase64");
         return (module as unknown as (config: { wasmBinary: Uint8Array }) => Promise<ManifoldToplevel>)({
           wasmBinary: base64ToUint8Array(manifoldWasmBase64),
         });

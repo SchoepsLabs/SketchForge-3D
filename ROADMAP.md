@@ -307,7 +307,12 @@ Claude before it's considered done.
       Marty actually dragging things.
       *Accept:* Marty says dragging feels as immediate as Tinkercad; no dropped frames in
       a 60-shape scene drag (perf run extended with an interaction benchmark).
-- [ ] **Speed: first-load and interaction** — retry the manifold/OCCT deferral that was
+- [ ] **Speed: first-load and interaction** *(2026-08-06: manifold deferral **taken** —
+      route 1.24 MB → 944 kB, page chunk 1276 → 502 KB, verified by recursive search of the
+      build output; sketch workspace lazy-loaded (29.4 KB). Interactive well under 2 s on a
+      production serve. Unticked because the `file:` export path is unverified — it now needs
+      an on-demand chunk — and because the fonts (~1.1 MB, now the top contributor) are a
+      follow-up task. See NIGHTLOG + BASELINE 2026-08-06.)* — retry the manifold/OCCT deferral that was
       attempted and reverted (12+17 ms priced saving on ~800 KB), lazy-load the sketch
       workspace, and get first-interactive under 2 s on the dev box.
       *Accept:* BASELINE.md updated with before/after; editor interactive < 2 s cold.
