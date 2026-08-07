@@ -58,6 +58,27 @@ but one path in it is unverified and is called out below.
   base64; that is as far as I can take it without knowing the deployment.
 - typecheck green; **498 tests green**; `npm run build`, `npm run export` and `npm run perf` all
   green, with the first boolean at 16.3 ms vs 17.1 ms baseline.
+- **Post-hoc verification pass**, because three claims across this session's tasks rested on
+  inference rather than observation. All three now checked in a browser against a freshly
+  restarted dev server:
+  1. **A real boolean in the served editor** — the load-bearing claim for the whole deferral,
+     and `npm run perf` does *not* cover it (node has no `window`, so it never takes the branch
+     that was changed). Created a 40 mm box and a 20 mm cylindrical hole through the bridge and
+     ran `boolean_cut`: returned a `grouped-manifold-cut` mesh of **400 triangles**, and the
+     bored box renders correctly in the viewport. The deferred manifold runtime loads,
+     instantiates and runs `setup()` in the browser.
+  2. **Sketch mode** — `next/dynamic` with no `loading` fallback around a canvas component is
+     exactly where a lazy boundary bites. Entered SKETCH → Sketch to 3D → Extrude: the
+     workspace mounts, grid and DRAW/SELECT/HISTORY/INSPECT toolbars render, and the gallery
+     correctly hides itself in sketch mode.
+  3. **The dashboard** — every other check this session was the editor, but `globals.css` is
+     shared and the radii sweep touched `.dashboard-*`, and it is the *first* screen. Loads
+     clean in light: cards, pills, tiles, segmented control all correct.
+  Test shapes were deleted from both registered editors afterwards; both scenes are back to 0.
+- Also closed a latent hole in the gallery's render guard found while reviewing: it claimed the
+  theme beside the guard rather than inside the timeout the cleanup cancels, so a cancelled pass
+  could have blocked every later one. Not reachable by any current path — `toolbarShapeAssets`
+  is a stable module constant and `hydrated` flips once — but a trap for the next person.
 - Blocked: nothing.
 
 ## 2026-08-06 — Block 8, task 2 (theme token set + light default)

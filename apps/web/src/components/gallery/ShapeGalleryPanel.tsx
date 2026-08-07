@@ -94,10 +94,13 @@ export function ShapeGalleryPanel({ assets, onPlaceShape, resolvedTheme }: Shape
    */
   useEffect(() => {
     if (!hydrated || state.collapsed || renderedForRef.current === resolvedTheme) return;
-    renderedForRef.current = resolvedTheme;
     const pixelRatio = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
 
     const handle = window.setTimeout(() => {
+      // Marked inside the timeout, not beside the guard: the cleanup cancels
+      // this callback, so claiming the theme up front would let a cancelled
+      // pass block every later one and leave the tiles on PNG art for good.
+      renderedForRef.current = resolvedTheme;
       const rendered: Record<string, string> = {};
       for (const asset of assets) {
         const plan = shapeThumbnailPlan(asset);
