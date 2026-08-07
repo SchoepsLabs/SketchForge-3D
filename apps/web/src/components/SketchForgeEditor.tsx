@@ -53,6 +53,7 @@ import {
 } from "./icons";
 import { WorkplaneViewport } from "./WorkplaneViewport";
 import { AssistantDock } from "./assistant/AssistantDock";
+import { ShapeGalleryPanel } from "./gallery/ShapeGalleryPanel";
 import { ContextMenu } from "./workplane/ContextMenu";
 import { SceneDraftGuard } from "./workplane/SceneDraftGuard";
 import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "./SketchWorkspace";
@@ -6726,6 +6727,24 @@ export function SketchForgeEditor({
     [commitShapes, placementWorkplane, shapes],
   );
 
+  /**
+   * One entry point for "the user picked a shape from a palette", shared by the
+   * toolbar dropdown and the gallery panel so the two can never drift on how a
+   * pick is routed (armed for cursor placement vs. dropped at the origin).
+   */
+  const placeShapeFromPalette = useCallback(
+    (asset: ShapeAsset) => {
+      if (workspaceSettings.cruiseShapes && toolbarMode !== "sketch") {
+        setPendingShapeAsset(asset);
+      } else {
+        addShape(asset);
+      }
+      setTopPanel(null);
+      setMenuOpen(false);
+    },
+    [addShape, toolbarMode, workspaceSettings.cruiseShapes],
+  );
+
   const scheduleRevolveShapeUpdate = useCallback((id: string, settings: SketchRevolveSettings) => {
     const previousTimer = sketchRevolveUpdateTimerRef.current.get(id);
     if (previousTimer !== undefined) window.clearTimeout(previousTimer);
@@ -9172,17 +9191,12 @@ export function SketchForgeEditor({
           setTopPanel((current) => (current === panel ? null : panel));
           setMenuOpen(false);
         }}
-        onAddShape={(shape) => {
-          if (workspaceSettings.cruiseShapes && toolbarMode !== "sketch") {
-            setPendingShapeAsset(shape);
-          } else {
-            addShape(shape);
-          }
-          setTopPanel(null);
-          setMenuOpen(false);
-        }}
+        onAddShape={placeShapeFromPalette}
       />
       <div className="editor-body">
+        {toolbarMode === "sketch" && sketchActive ? null : (
+          <ShapeGalleryPanel assets={toolbarShapeAssets} onPlaceShape={placeShapeFromPalette} resolvedTheme={resolvedTheme} />
+        )}
         {toolbarMode === "sketch" && sketchActive ? (
           <SketchWorkspace
             profile={sketchProfile}

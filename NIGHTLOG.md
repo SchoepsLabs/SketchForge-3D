@@ -7,6 +7,63 @@ Newest entries on top. Template:
 - PR candidates:
 - Next:
 
+## 2026-08-06 — Block 8, task 1 (persistent shape gallery panel)
+
+**Nothing visual in this entry is done.** Block 8's premise is that every visual call gets
+approved live with Marty; this was an overnight run with no approver, so the panel is built,
+wired and verified *functional*, and every appearance decision in it — side, width, tile size,
+category names, tone — is provisional until it is looked at in the editor and either kept or
+changed. The roadmap box stays unticked for that reason.
+
+- Baseline first: typecheck green, **467 tests green** before any edit. Two prior entries said
+  `npm run ci` had never actually run here (sandbox 45 s cap); it runs fine on this box in ~4 s,
+  so that constraint is gone and CI ran on every step below.
+- Shipped, additive, no edits inside the two giant files beyond one import and one mount:
+  - `lib/shapeThumbnails.ts` — pure planning layer: catalog entry → what to draw, at the
+    dimensions `makeShapeFromAsset` would actually place, plus camera framing and cache keying.
+  - `lib/shapeThumbnailRenderer.ts` — the WebGL half. **One shared `WebGLRenderer`** for the
+    whole panel (twelve contexts would evict the viewport's own), created on the first tile that
+    needs it and never at module load, so a session that never opens the gallery pays nothing.
+  - `lib/shapeGalleryState.ts` — categories, filtering, and the persisted panel preference.
+  - `components/gallery/ShapeGalleryPanel.tsx` — the panel itself.
+  - `SketchForgeEditor.tsx`: one import, one mount in `editor-body`, and the toolbar's inline
+    add-shape routing extracted to a shared `placeShapeFromPalette` so the dropdown and the
+    gallery can never drift on how a pick is routed (armed for cursor placement vs. placed).
+  - `globals.css`: `.shape-gallery-*`, all on tokens. Also added the **`--space-1…6` scale**
+    (4 px base) that task 2 owes — the panel needed it, so it landed here.
+- Placement is **not** reimplemented. Tiles set the same `SHAPE_DRAG_MIME` payload and the same
+  module-level asset register the dropdown sets, so the viewport's existing `handleDragOver`/
+  `handleDrop` and the placement ghost drive the drop unchanged.
+- **Bug found and fixed by looking at it, which no test would have caught:** the first render
+  cropped every tile. The framing distance was a flat multiple of the bounding radius and took
+  no account of the camera's field of view — fitting a sphere of radius r needs
+  `d ≥ r/sin(fov/2)` (≈3.6r at 32°), and it was standing at 1.9r. Now derived from the FOV, with
+  the FOV shared between the planner and the renderer so they cannot disagree. Locked by a test
+  that asserts the fit inequality for every catalog shape, and a second that stops it drifting so
+  far back the shape shrinks. A grid whose rows stretched to fill the panel (tall blank footer
+  under every label) was fixed in the same pass.
+- Verified live in-tab at `localhost:3001/?editor=1`: panel present, **11 of 12 tiles rendering
+  as real colored 3D geometry**, all 12 visible without scrolling, collapse → rail → re-expand
+  works and the preference round-trips through localStorage, and clicking a tile placed a cone
+  (undone afterwards — the scene was left at 0 shapes and Marty's pending 5-object draft offer
+  was deliberately left unanswered, not discarded).
+- **Known gaps, all deliberate:**
+  - `text` keeps its PNG icon — real glyphs need the viewport's font pipeline, and a blank plate
+    would misrepresent the shape. It is the only icon fallback left.
+  - `gear` renders an *approximation* (rim teeth, no centre bore). It reads as a gear at 96 px;
+    it is not the real involute generator and is commented as such.
+  - HTML5 drag-to-place could not be verified by automation — synthetic mouse events do not fire
+    `dragstart` in Chrome. The click path was verified live; the drag path is the same code
+    already proven live for the dropdown on 2026-08-06. **Needs a human drag to close.**
+- **Build gotcha, worse than the CSS-only one already logged:** the Next dev watcher sees *no*
+  edits through this host filesystem mount — TSX included, not just `globals.css`. The server
+  served a stale bundle across hard reloads and reported no recompile at all. `touch` was not
+  enough; the fix is to restart the dev server (and the old `node` survives the shell being
+  killed — stop it by PID on port 3001). Cost ~20 min; worth checking the compile log before
+  trusting anything seen in-tab.
+- typecheck green; **495 tests green** (+28: 26 new, and the framing pair added with the fix).
+- Blocked: nothing. Next: task 2 (theme token set + light default).
+
 ## 2026-08-06 — Live session (Cowork): UI redesign block 2, placement + dimension feel
 - Mapped the placement/gizmo code before touching it. Most of the "Tinkercad feel" was
   **already built and switched off**, which changes the plan considerably:

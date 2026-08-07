@@ -271,7 +271,12 @@ print pipeline, and parametrics be the reasons there's no going back. Structural
 overnight-safe; every visual call gets approved live in the editor with Marty/desktop
 Claude before it's considered done.
 
-- [ ] **Persistent shape gallery panel** — Tinkercad's defining element. Right-side (or
+- [ ] **Persistent shape gallery panel** *(2026-08-06: built and functionally verified —
+      panel, 3D thumbnails, categories, search, collapse+persist, click-to-place. Left side,
+      not right: the right edge still carries the inspector rail and the dock until the layout
+      parity task moves the inspector. Every visual decision is provisional and the box stays
+      unticked until approved live; a human drag-to-place still has to close the drag path.
+      See NIGHTLOG 2026-08-06.)* — Tinkercad's defining element. Right-side (or
       left, mirroring Tinkercad exactly) always-visible panel of shape cards with real
       rendered color thumbnails (offscreen three.js render per catalog entry, cached),
       scrollable categories, drag-in using the existing placement ghost, click-to-arm
